@@ -149,6 +149,55 @@ export default function ArgoMap() {
     mapRef.current?.flyTo({ center: place.loc as [number, number], zoom: 17, pitch: 55, duration: 1800 });
   }, []);
 
+  /* ── Routing ── */
+  const clearRoute = useCallback(() => {
+    const m = mapRef.current;
+    if (m && m.getSource('route')) {
+      (m.getSource('route') as maplibregl.GeoJSONSource).setData({ type: 'FeatureCollection', features: [] } as any);
+    }
+  }, []);
+
+  const drawRoute = useCallback((end: [number, number]) => {
+    const m = mapRef.current;
+    if (!m) return;
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async pos => {
+        const start = [pos.coords.longitude, pos.coords.latitude];
+        try {
+          const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson`);
+          const data = await res.json();
+          if (data.routes && data.routes[0]) {
+            const geom = data.routes[0].geometry;
+            const source = m.getSource('route') as maplibregl.GeoJSONSource;
+            if (source) {
+              source.setData(geom);
+            } else {
+              m.addSource('route', { type: 'geojson', data: geom });
+              m.addLayer({
+                id: 'route-line-casing',
+                type: 'line',
+                source: 'route',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': BRAND.cyan, 'line-width': 10, 'line-opacity': 0.25 }
+              });
+              m.addLayer({
+                id: 'route-line',
+                type: 'line',
+                source: 'route',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': BRAND.cyan, 'line-width': 4 }
+              });
+            }
+            const bounds = new maplibregl.LngLatBounds(start, start);
+            for (const coord of geom.coordinates) bounds.extend(coord as [number, number]);
+            m.fitBounds(bounds, { padding: 80, pitch: 45 });
+          }
+        } catch (err) { console.error('Route error:', err); }
+      }, () => alert("Please allow Location access to build a route."));
+    }
+  }, []);
+
   /* ── Map init ── */
   useEffect(() => {
     if (!containerRef.current) return;
@@ -298,14 +347,16 @@ export default function ArgoMap() {
         <div className="detail-card">
           <div className="detail-hero">
             <img src="https://images.unsplash.com/photo-1549918830-11ec3d403619?q=80&w=800&auto=format&fit=crop" alt={selected.name} />
-            <button className="close-fab" onClick={() => setSelected(null)}><X size={16} /></button>
+            <button className="close-fab" onClick={() => { setSelected(null); clearRoute(); }}><X size={16} /></button>
             <div className="rating-badge"><Star size={13} fill="#FACC15" color="#FACC15" />{selected.rating}</div>
           </div>
           <div className="detail-body">
             <span className="detail-type"><ShieldCheck size={13} color="#22C55E" /> {selected.type}</span>
             <h2>{selected.name}</h2>
             <div className="detail-actions">
-              <button className="btn-primary"><Navigation2 size={18} fill="white" /> Navigate</button>
+              <button className="btn-primary" onClick={() => drawRoute(selected.loc as [number, number])}>
+                <Navigation2 size={18} fill="white" /> Navigate
+              </button>
               <button className="btn-secondary"><Heart size={18} /></button>
             </div>
             <div className="departures">
