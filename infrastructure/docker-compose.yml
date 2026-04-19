@@ -1,14 +1,48 @@
-# Argo Maps — Tile Server (Simplified)
-# Uses PMTiles file instead of PostGIS pipeline
+# ═══════════════════════════════════════════════════
+#  Argo Maps — Full Stack Docker Compose
+#  One command to rule them all: docker compose up
+# ═══════════════════════════════════════════════════
 #
-# Setup:
-#   1. Download Armenia tiles:
-#      wget -O tiles/armenia.pmtiles https://build.protomaps.com/20240101.pmtiles
-#      (or use the download script: ./scripts/download-tiles.sh)
-#   2. docker compose up -d
-#   3. http://localhost:3100 — Martin catalog
+#  Services:
+#    • argo-frontend  → Next.js (port 3000)
+#    • argo-search    → Go Fuzzy Search API (port 4000)
+#    • argo-spatial   → Rust K-D Tree Engine (port 4002)
+#    • argo-martin    → MapLibre Tile Server (port 3100)
+#    • argo-nginx     → Reverse Proxy + CORS (port 8080)
+#
+#  Usage:
+#    cd infrastructure && docker compose up -d
+#
 
 services:
+
+  # ─── Go: Fuzzy Search API (Levenshtein) ───
+  search-api:
+    build:
+      context: ../backend/search-api
+      dockerfile: Dockerfile
+    container_name: argo-search
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/search?q=test"]
+      interval: 10s
+      timeout: 3s
+
+  # ─── Rust: Spatial Engine (K-D Tree) ───
+  spatial-engine:
+    build:
+      context: ../backend/spatial-engine
+      dockerfile: Dockerfile
+    container_name: argo-spatial
+    ports:
+      - "4002:4002"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4002/health"]
+      interval: 10s
+      timeout: 3s
 
   # ─── Martin: serves PMTiles directly (no PostGIS needed) ───
   martin:
@@ -33,6 +67,3 @@ services:
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     restart: unless-stopped
-
-volumes:
-  pgdata:
