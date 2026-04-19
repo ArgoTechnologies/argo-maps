@@ -152,30 +152,43 @@ impl KdNode {
 }
 
 // ═══════════════════════════════════════════════════
-//  DATABASE: Yerevan POI dataset (will be replaced with OSM import later)
+//  DATABASE: Loading OSM Dataset into K-D Tree
 // ═══════════════════════════════════════════════════
+#[derive(Deserialize)]
+struct JsonPlace {
+    id: String,
+    name: String,
+    #[serde(rename = "nameHy", default)]
+    name_hy: String,
+    #[serde(rename = "type", default)]
+    place_type: String,
+    loc: [f64; 2],
+}
+
 fn load_yerevan_places() -> Vec<Place> {
+    let paths = vec!["places.json", "/places.json"];
+    
+    for path in paths {
+        if let Ok(data) = std::fs::read_to_string(path) {
+            if let Ok(json_places) = serde_json::from_str::<Vec<JsonPlace>>(&data) {
+                println!("📦 Loaded {} additional places from OSM data ({})", json_places.len(), path);
+                return json_places.into_iter().map(|p| Place {
+                    id: p.id,
+                    name: p.name,
+                    name_hy: p.name_hy,
+                    place_type: p.place_type,
+                    lat: p.loc[0],
+                    lng: p.loc[1],
+                }).collect();
+            } else {
+                println!("⚠️ Failed to parse JSON from {}", path);
+            }
+        }
+    }
+    
+    println!("⚠️ Could not read places.json. Using fallback data.");
     vec![
-        Place { id: "s1".into(), name: "Republic Square".into(), name_hy: "Հանրdelays հdelays".into(), place_type: "Plaza".into(), lng: 44.5126, lat: 40.1776 },
-        Place { id: "s2".into(), name: "Cascade Complex".into(), name_hy: "Կасկdelays համdelays".into(), place_type: "Landmark".into(), lng: 44.5155, lat: 40.1915 },
-        Place { id: "s3".into(), name: "Opera House".into(), name_hy: "Օdelay ու delays".into(), place_type: "Theatre".into(), lng: 44.5145, lat: 40.1860 },
-        Place { id: "s4".into(), name: "Blue Mosque".into(), name_hy: "Կapuyт мdelay".into(), place_type: "Place of Worship".into(), lng: 44.5056, lat: 40.1782 },
-        Place { id: "s5".into(), name: "Vernissage Market".into(), name_hy: "Վernissage".into(), place_type: "Market".into(), lng: 44.5171, lat: 40.1770 },
-        Place { id: "s6".into(), name: "North Avenue".into(), name_hy: "Հyupyp пdelay".into(), place_type: "Street".into(), lng: 44.5120, lat: 40.1815 },
-        Place { id: "s7".into(), name: "Yerevan State University".into(), name_hy: "ЕПdelay".into(), place_type: "University".into(), lng: 44.5134, lat: 40.1870 },
-        Place { id: "s8".into(), name: "Hrazdan Stadium".into(), name_hy: "Հrdelay".into(), place_type: "Stadium".into(), lng: 44.5020, lat: 40.1888 },
-        Place { id: "s9".into(), name: "Erebuni Fortress".into(), name_hy: "Էdelay".into(), place_type: "Historical Site".into(), lng: 44.5280, lat: 40.1495 },
-        Place { id: "s10".into(), name: "Tsitsernakaberd Memorial".into(), name_hy: "Ծdelay".into(), place_type: "Memorial".into(), lng: 44.4901, lat: 40.1853 },
-        Place { id: "s11".into(), name: "Mashtots Avenue".into(), name_hy: "Маshdelay".into(), place_type: "Street".into(), lng: 44.5100, lat: 40.1830 },
-        Place { id: "s12".into(), name: "Victory Park".into(), name_hy: "Հautodelay park".into(), place_type: "Park".into(), lng: 44.5108, lat: 40.1945 },
-        Place { id: "s13".into(), name: "Yerevan Train Station".into(), name_hy: "Երevdelay".into(), place_type: "Train Station".into(), lng: 44.5072, lat: 40.1707 },
-        Place { id: "s14".into(), name: "Dalma Garden Mall".into(), name_hy: "Далмdelay".into(), place_type: "Shopping Mall".into(), lng: 44.5448, lat: 40.1716 },
-        Place { id: "s15".into(), name: "Armenia Marriott Hotel".into(), name_hy: "Мdelay".into(), place_type: "Hotel".into(), lng: 44.5130, lat: 40.1777 },
-        Place { id: "s16".into(), name: "Saryan Street".into(), name_hy: "Сарdelay пoгоdelays".into(), place_type: "Street".into(), lng: 44.5080, lat: 40.1795 },
-        Place { id: "s17".into(), name: "Lovers Park".into(), name_hy: "Сdelay".into(), place_type: "Park".into(), lng: 44.5140, lat: 40.1902 },
-        Place { id: "s18".into(), name: "GUM Market".into(), name_hy: "ГУМ".into(), place_type: "Market".into(), lng: 44.5172, lat: 40.1717 },
-        Place { id: "s19".into(), name: "Zoravar Andranik Metro".into(), name_hy: "Зdelay".into(), place_type: "Subway Station".into(), lng: 44.5183, lat: 40.1721 },
-        Place { id: "s20".into(), name: "Marshal Baghramyan Metro".into(), name_hy: "Мdelay Б".into(), place_type: "Subway Station".into(), lng: 44.5095, lat: 40.1905 },
+        Place { id: "s1".into(), name: "Republic Square".into(), name_hy: "Հանրապետության հրապարակ".into(), place_type: "Plaza".into(), lng: 44.5126, lat: 40.1776 },
     ]
 }
 

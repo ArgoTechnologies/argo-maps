@@ -7,5 +7,6 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/spatial-engine /spatial-engine
+COPY places.json /places.json
 EXPOSE 4002
 CMD ["/spatial-engine"]
