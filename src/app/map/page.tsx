@@ -133,12 +133,24 @@ export default function ArgoMap() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [layerPanel, setLayerPanel] = useState(false);
   const [activeView, setActiveView] = useState<'default' | 'transit' | 'traffic'>('default');
+  const [results, setResults] = useState<DynamicPlace[]>([]);
 
-  /* Search filter */
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    return PLACES.filter(p => p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q)) as DynamicPlace[];
+  /* ── Go API Search ── */
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`http://localhost:4000/api/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setResults(data || []);
+      } catch (err) {
+        console.error('Go API Error:', err);
+      }
+    }, 250); // Debounce
+    return () => clearTimeout(timer);
   }, [query]);
 
   /* Select place */
@@ -347,7 +359,13 @@ export default function ArgoMap() {
         <div className="detail-card">
           <div className="detail-hero">
             <img src="https://images.unsplash.com/photo-1549918830-11ec3d403619?q=80&w=800&auto=format&fit=crop" alt={selected.name} />
-            <button className="close-fab" onClick={() => { setSelected(null); clearRoute(); }}><X size={16} /></button>
+            <button className="close-fab" onClick={() => { 
+              setSelected(null); 
+              clearRoute(); 
+              mapRef.current?.flyTo({ center: [44.5135, 40.1820], zoom: 14.5, pitch: 45, duration: 1500 });
+            }}>
+              <X size={16} />
+            </button>
             <div className="rating-badge"><Star size={13} fill="#FACC15" color="#FACC15" />{selected.rating}</div>
           </div>
           <div className="detail-body">
