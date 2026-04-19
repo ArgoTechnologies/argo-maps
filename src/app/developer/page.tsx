@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Plus, 
   Key, 
@@ -16,21 +16,58 @@ import {
   ChevronRight,
   Zap,
   Shield,
-  LifeBuoy
+  LifeBuoy,
+  Server,
+  Cpu,
+  HardDrive
 } from 'lucide-react';
 import Link from 'next/link';
 
+type ServiceStatus = { name: string; url: string; lang: string; port: number; status: 'checking' | 'online' | 'offline'; latency: number };
+
 export default function DeveloperPortal() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [keys, setKeys] = useState([
+  const [keys] = useState([
     { id: 1, name: 'Production App', key: 'argo_live_882x_pk_99', created: '12 days ago', status: 'Active' },
     { id: 2, name: 'Development Bot', key: 'argo_test_412x_sk_21', created: '2 hrs ago', status: 'Active' },
   ]);
+
+  const [services, setServices] = useState<ServiceStatus[]>([
+    { name: 'Search API', url: 'http://127.0.0.1:4000/api/search?q=test', lang: 'Go', port: 4000, status: 'checking', latency: 0 },
+    { name: 'Spatial Engine', url: 'http://127.0.0.1:4002/health', lang: 'Rust', port: 4002, status: 'checking', latency: 0 },
+    { name: 'Tile Server', url: 'http://127.0.0.1:3100/catalog', lang: 'Rust (Martin)', port: 3100, status: 'checking', latency: 0 },
+    { name: 'Reverse Proxy', url: 'http://127.0.0.1:8080/', lang: 'Nginx', port: 8080, status: 'checking', latency: 0 },
+  ]);
+
+  useEffect(() => {
+    const checkServices = async () => {
+      const updated = await Promise.all(services.map(async (svc) => {
+        const start = performance.now();
+        try {
+          await fetch(svc.url, { mode: 'no-cors', signal: AbortSignal.timeout(3000) });
+          return { ...svc, status: 'online' as const, latency: Math.round(performance.now() - start) };
+        } catch {
+          return { ...svc, status: 'offline' as const, latency: 0 };
+        }
+      }));
+      setServices(updated);
+    };
+    checkServices();
+    const interval = setInterval(checkServices, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(text);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const langColor: Record<string, string> = {
+    'Go': '#00ADD8',
+    'Rust': '#FF4F00',
+    'Rust (Martin)': '#FF4F00',
+    'Nginx': '#009639',
   };
 
   return (
@@ -124,7 +161,7 @@ export default function DeveloperPortal() {
           {[
             { label: 'Total Requests', value: '1.2M', trend: '+12%', icon: Activity, color: '#22C55E' },
             { label: 'Avg Latency', value: '24ms', trend: '-4ms', icon: Zap, color: '#f59e0b' },
-            { label: 'Active Users', value: '45.2k', trend: '+860', icon:Globe, color: '#00f2ff' },
+            { label: 'Active Users', value: '45.2k', trend: '+860', icon: Globe, color: '#00f2ff' },
             { label: 'Error Rate', value: '0.02%', trend: '-0.01%', icon: Shield, color: '#ef4444' },
           ].map(stat => (
             <div key={stat.label} style={{ background: 'white', padding: '24px', borderRadius: '20px', border: '1px solid #E6E8EC' }}>
@@ -138,6 +175,57 @@ export default function DeveloperPortal() {
               <div style={{ fontSize: '0.85rem', color: '#6F767E', fontWeight: 600 }}>{stat.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* ═══ LIVE INFRASTRUCTURE STATUS ═══ */}
+        <div style={{ background: 'white', padding: '32px', borderRadius: '24px', border: '1px solid #E6E8EC', marginBottom: '48px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Server size={20} /> Infrastructure Status
+            </h3>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6F767E' }}>Auto-refresh: 10s</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            {services.map(svc => (
+              <div key={svc.name} style={{
+                padding: '20px',
+                borderRadius: '16px',
+                border: '1px solid #E6E8EC',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                background: svc.status === 'online' ? 'rgba(34,197,94,0.03)' : svc.status === 'offline' ? 'rgba(239,68,68,0.03)' : '#FAFAFA',
+              }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: `${langColor[svc.lang] || '#888'}15`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {svc.lang === 'Go' ? <Cpu size={20} color={langColor[svc.lang]} /> :
+                   svc.lang.includes('Rust') ? <HardDrive size={20} color={langColor[svc.lang]} /> :
+                   <Globe size={20} color={langColor[svc.lang]} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '2px' }}>{svc.name}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6F767E' }}>
+                    <span style={{ color: langColor[svc.lang], fontWeight: 800 }}>{svc.lang}</span> · Port {svc.port}
+                    {svc.latency > 0 && <span> · {svc.latency}ms</span>}
+                  </div>
+                </div>
+                <div style={{
+                  padding: '5px 12px',
+                  borderRadius: '100px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  background: svc.status === 'online' ? 'rgba(34,197,94,0.1)' : svc.status === 'offline' ? 'rgba(239,68,68,0.1)' : 'rgba(0,0,0,0.05)',
+                  color: svc.status === 'online' ? '#22C55E' : svc.status === 'offline' ? '#ef4444' : '#888',
+                }}>
+                  {svc.status === 'online' ? '● Online' : svc.status === 'offline' ? '● Offline' : '◌ Checking...'}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* API Keys Table */}
