@@ -3,81 +3,139 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Search, Map as MapIcon, Layers, Bus, Navigation2, Info, X, ChevronRight, Zap } from 'lucide-react';
+import { 
+  Search, 
+  Layers, 
+  Bus, 
+  Navigation2, 
+  X, 
+  ChevronRight, 
+  Zap, 
+  Map as MapIcon, 
+  LocateFixed, 
+  Settings2,
+  Clock,
+  Star,
+  MapPin
+} from 'lucide-react';
 
-// Mock data for transit
+const ARGO_UI_CONFIG = {
+  primaryColor: '#00f2ff',
+  bgColor: '#F8F6F1',
+  textColor: '#2C2A26',
+  mutedColor: '#8C8880'
+};
+
 const mockBusStops = [
-  { id: 1, name: 'Republic Square', loc: [44.512, 40.177], type: 'central' },
-  { id: 2, name: 'Cascade Complex', loc: [44.515, 40.188], type: 'stop' },
-  { id: 3, name: 'Opera House', loc: [44.514, 40.184], type: 'stop' },
-  { id: 4, name: 'Vernissage', loc: [44.518, 40.176], type: 'stop' },
-  { id: 5, name: 'Yeritasardakan Metro', loc: [44.520, 40.186], type: 'metro' },
+  { id: 1, name: 'Republic Square', loc: [44.5126, 40.1776], buses: ['1', '14', '33'], type: 'Metro Station' },
+  { id: 2, name: 'Cascade Complex', loc: [44.5152, 40.1888], buses: ['1', '5', '8'], type: 'Bus Stop' },
+  { id: 3, name: 'Opera House', loc: [44.5142, 40.1843], buses: ['11', '14', '20'], type: 'Bus Stop' },
+  { id: 4, name: 'Vernissage Market', loc: [44.5186, 40.1764], buses: ['2', '12'], type: 'Cultural Site' },
+  { id: 5, name: 'Yeritasardakan', loc: [44.5204, 40.1866], buses: ['Metro'], type: 'Metro Station' },
 ];
 
-const mockBuses = [
-  { id: '101', route: '1', loc: [44.513, 40.180], heading: 45 },
-  { id: '102', route: '14', loc: [44.510, 40.175], heading: 180 },
-];
-
-export default function MapApp() {
+export default function ArgoMapExplorer() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [layersOpen, setLayersOpen] = useState(false);
-  const [activeLayer, setActiveLayer] = useState('Default');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!mapContainer.current) return;
 
+    // Use a reliable base style but we will customize it to the "Argo" palette
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://demotiles.maplibre.org/style.json',
-      center: [44.509, 40.177],
-      zoom: 14,
+      style: 'https://tiles.basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+      center: [44.512, 40.183],
+      zoom: 14.5,
+      pitch: 45,
+      bearing: -17,
       attributionControl: false,
     });
 
-    map.current.addControl(new maplibregl.NavigationControl({ visualEnabled: true }), 'bottom-right');
-    map.current.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true }), 'bottom-right');
+    map.current.on('style.load', () => {
+      if (!map.current) return;
+      
+      // Override colors to match Argo's warm off-white and electric cyan brand
+      const style = map.current.getStyle();
+      style.layers?.forEach(layer => {
+        if (layer.type === 'background') {
+          map.current?.setPaintProperty(layer.id, 'background-color', ARGO_UI_CONFIG.bgColor);
+        }
+        if (layer.type === 'fill' && layer.id.includes('water')) {
+          map.current?.setPaintProperty(layer.id, 'fill-color', '#A8C8E8');
+        }
+        if (layer.type === 'fill' && (layer.id.includes('park') || layer.id.includes('green') || layer.id.includes('wood'))) {
+          map.current?.setPaintProperty(layer.id, 'fill-color', '#C8DDB0');
+        }
+        if (layer.type === 'line' && (layer.id.includes('motorway') || layer.id.includes('primary'))) {
+          map.current?.setPaintProperty(layer.id, 'line-color', '#F0C070');
+        }
+      });
 
-    map.current.on('load', () => {
-      // Add bus stops markers
+      // Add custom 3D buildings at high zoom
+      if (!map.current.getLayer('3d-buildings')) {
+        map.current.addLayer({
+          'id': '3d-buildings',
+          'source': 'carto',
+          'source-layer': 'building',
+          'type': 'fill-extrusion',
+          'minzoom': 15,
+          'paint': {
+            'fill-extrusion-color': '#E8E4DC',
+            'fill-extrusion-height': ['get', 'render_height'],
+            'fill-extrusion-base': ['get', 'render_min_height'],
+            'fill-extrusion-opacity': 0.8
+          }
+        });
+      }
+
+      // Add custom markers
       mockBusStops.forEach(stop => {
         const el = document.createElement('div');
-        el.className = 'stop-marker';
-        el.style.width = '12px';
-        el.style.height = '12px';
-        el.style.borderRadius = '50%';
-        el.style.background = 'white';
-        el.style.border = '2px solid var(--accent-cyan)';
-        el.style.boxShadow = '0 0 10px rgba(0, 242, 255, 0.5)';
+        el.className = 'argo-custom-marker';
         el.style.cursor = 'pointer';
+        el.innerHTML = `
+          <div style="
+            background: #ffffff; 
+            width: 36px; 
+            height: 36px; 
+            border-radius: 50% 50% 50% 0; 
+            transform: rotate(-45deg); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            border: 3px solid #ffffff;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          " class="marker-pin">
+            <div style="
+              width: 16px; 
+              height: 16px; 
+              background: #00f2ff; 
+              border-radius: 50%;
+              transform: rotate(45deg);
+            "></div>
+          </div>
+        `;
 
-        el.addEventListener('click', () => {
-          setSelectedItem({ type: 'stop', ...stop });
-          map.current?.flyTo({ center: stop.loc as any, zoom: 16 });
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setSelectedItem(stop);
+          setSidebarOpen(true);
+          map.current?.flyTo({ 
+            center: stop.loc as any, 
+            zoom: 16.5, 
+            pitch: 60, 
+            duration: 1500,
+            offset: [150, 0] // Offset to make room for sidebar
+          });
         });
 
         new maplibregl.Marker(el)
           .setLngLat(stop.loc as any)
-          .addTo(map.current!);
-      });
-
-      // Add live bus markers
-      mockBuses.forEach(bus => {
-        const el = document.createElement('div');
-        el.className = 'bus-marker';
-        el.innerHTML = `<div style="background: var(--accent-cyan); width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transform: rotate(${bus.heading}deg); border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3)">
-          <span style="color: black; font-weight: 700; font-size: 10px">${bus.route}</span>
-        </div>`;
-        
-        el.addEventListener('click', () => {
-          setSelectedItem({ type: 'bus', ...bus });
-          map.current?.flyTo({ center: bus.loc as any, zoom: 16 });
-        });
-
-        new maplibregl.Marker(el)
-          .setLngLat(bus.loc as any)
           .addTo(map.current!);
       });
     });
@@ -86,182 +144,204 @@ export default function MapApp() {
   }, []);
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-primary)' }}>
-      {/* Search Header */}
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#F8F6F1', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      
+      {/* Search Bar - Top Floating */}
       <div style={{
         position: 'absolute',
-        top: '20px',
-        left: '20px',
-        width: '400px',
-        zIndex: 10,
+        top: '24px',
+        left: '24px',
+        width: '420px',
+        zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
         gap: '12px'
       }}>
         <div className="glass" style={{
-          padding: '8px 16px',
-          borderRadius: '12px',
+          padding: '12px 20px',
+          borderRadius: '16px',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          boxShadow: 'var(--shadow-lg)'
+          gap: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+          border: '1px solid rgba(255,255,255,0.4)',
+          background: 'rgba(255,255,255,0.95)'
         }}>
-          <Search size={20} color="var(--text-dim)" />
+          <div style={{ background: '#00f2ff', color: 'black', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 900, letterSpacing: '0.05em' }}>ARGO</div>
           <input 
             type="text" 
-            placeholder="Search stops, routes, or places..." 
+            placeholder="Search stops, places, routes..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-main)',
+              color: '#2C2A26',
               fontSize: '1rem',
               width: '100%',
-              outline: 'none'
+              outline: 'none',
+              fontWeight: 500
             }}
           />
-          <X size={18} color="var(--text-dim)" style={{ cursor: 'pointer' }} />
+          <Search size={20} color="#8C8880" />
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
-          {['Bus', 'Metro', 'Nearby'].map(tag => (
-            <button key={tag} className="glass" style={{
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
+          {[
+            { label: 'Transport', icon: Bus },
+            { label: 'Saved', icon: Star },
+            { label: 'Nearby', icon: MapPin },
+          ].map(item => (
+            <button key={item.label} className="glass" style={{
+              padding: '8px 16px',
+              borderRadius: '12px',
+              fontSize: '0.85rem',
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '8px',
+              background: 'rgba(255,255,255,0.95)',
+              color: '#444',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
             }}>
-              {tag === 'Bus' && <Bus size={14} />}
-              {tag}
+              <item.icon size={15} />
+              {item.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Layer Toggles */}
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        right: '20px',
-        zIndex: 10,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
-      }}>
-        <button 
-          onClick={() => setLayersOpen(!layersOpen)}
-          className="glass" 
-          style={{ width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyCCenter: 'center' }}
-        >
-          <Layers size={21} />
-        </button>
-        
-        {layersOpen && (
-          <div className="glass animated-fade-in" style={{ padding: '10px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {['Default', 'Dark', 'Satellite'].map(layer => (
-              <button 
-                key={layer}
-                onClick={() => setActiveLayer(layer)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  textAlign: 'left',
-                  background: activeLayer === layer ? 'var(--accent-cyan)' : 'transparent',
-                  color: activeLayer === layer ? 'black' : 'var(--text-main)',
-                  transition: '0.2s'
-                }}
-              >
-                {layer}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Map Content */}
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
-      {/* Info Sheet (Bottom side) */}
-      {selectedItem && (
-        <div className="glass" style={{
+      {/* Controls - Bottom Right */}
+      <div style={{
+        position: 'absolute',
+        bottom: '32px',
+        right: '24px',
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
+        <button className="glass-btn" style={{ width: '52px', height: '52px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: '#2C2A26', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          <LocateFixed size={22} />
+        </button>
+        <button className="glass-btn" style={{ width: '52px', height: '52px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: '#2C2A26', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          <Layers size={22} />
+        </button>
+      </div>
+
+      {/* Floating Info Panel - Sliding from Right */}
+      {selectedItem && sidebarOpen && (
+        <div style={{
           position: 'absolute',
-          bottom: '20px',
-          left: '20px',
-          width: '380px',
-          maxHeight: '400px',
-          zIndex: 10,
-          borderRadius: '20px',
-          padding: '24px',
-          boxShadow: 'var(--shadow-lg)',
-          overflowY: 'auto'
+          top: '24px',
+          right: '24px',
+          width: '420px',
+          height: 'calc(100vh - 48px)',
+          zIndex: 2000,
+          background: '#ffffff',
+          borderRadius: '28px',
+          boxShadow: '-10px 0 60px rgba(0,0,0,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{selectedItem.name || \`Route \${selectedItem.route}\`}</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{selectedItem.type || 'In transit'}</p>
-            </div>
-            <button onClick={() => setSelectedItem(null)} style={{ color: 'var(--text-dim)' }}>
-              <X size={20} />
+          <div style={{ position: 'relative', height: '240px', background: '#f0f0f0' }}>
+            <div style={{ width: '100%', height: '100%', background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.4))', position: 'absolute', zIndex: 1 }} />
+            <img 
+              src={`https://images.unsplash.com/photo-1579294800821-694d95e86143?q=80&w=1000&auto=format&fit=crop`} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              alt="Yerevan City"
+            />
+            <button 
+              onClick={() => setSidebarOpen(false)}
+              style={{ 
+                position: 'absolute', 
+                top: '20px', 
+                right: '20px', 
+                background: 'rgba(255,255,255,0.9)', 
+                color: '#2C2A26', 
+                width: '36px', 
+                height: '36px', 
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={18} />
             </button>
           </div>
 
-          {selectedItem.type === 'stop' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-                <div style={{ background: '#22c55e', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCCenter: 'center' }}>
-                  <Bus size={18} color="white" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>Route 1</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Arriving in 3 mins</div>
-                </div>
-                <ChevronRight size={16} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-                <div style={{ background: '#f59e0b', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyCCenter: 'center' }}>
-                  <Bus size={18} color="white" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>Route 14</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Arriving in 12 mins</div>
-                </div>
-                <ChevronRight size={16} />
+          <div style={{ padding: '32px', flex: 1, overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ background: '#00f2ff', color: 'black', fontSize: '0.7rem', fontWeight: 900, padding: '4px 10px', borderRadius: '6px', letterSpacing: '0.05em' }}>
+                {selectedItem.type.toUpperCase()}
+              </span>
+              <div style={{ display: 'flex', gap: '4px', color: '#f59e0b', alignItems: 'center' }}>
+                <Star size={14} fill="#f59e0b" />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2C2A26' }}>4.9</span>
               </div>
             </div>
-          ) : (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-cyan)', marginBottom: '1rem' }}>
-                <Zap size={16} />
-                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>LIVE TRACKING ACTIVE</span>
-              </div>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Currently moving towards Sayat-Nova Ave. Estimated speed 34 km/h.</p>
-            </div>
-          )}
 
-          <button className="btn-primary" style={{ width: '100%', marginTop: '20px', justifyContent: 'center' }}>
-            <Navigation2 size={18} /> Get Directions
-          </button>
+            <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#2C2A26', marginBottom: '20px', letterSpacing: '-0.02em' }}>{selectedItem.name}</h2>
+            
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+              <button style={{ flex: 1, background: '#2C2A26', color: 'white', padding: '14px', borderRadius: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', border: 'none', cursor: 'pointer' }}>
+                <Navigation2 size={20} fill="white" /> Get Directions
+              </button>
+              <button style={{ background: '#F0F0F0', width: '52px', borderRadius: '16px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <Star size={20} />
+              </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '28px' }}>
+              <h4 style={{ color: '#8C8880', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '20px', letterSpacing: '0.1em' }}>Live Bus Arrivals</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {selectedItem.buses.map((bus: string) => (
+                  <div key={bus} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px', background: '#F8F9FA', borderRadius: '20px', border: '1px solid #f0f0f0' }}>
+                    <div style={{ background: '#00f2ff', color: 'black', width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.1rem' }}>
+                      {bus}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, color: '#2C2A26', fontSize: '0.95rem' }}>Towards Centre</div>
+                      <div style={{ fontSize: '0.85rem', color: '#00f2ff', fontWeight: 800 }}>Arriving in {Math.floor(Math.random() * 10) + 2} mins</div>
+                    </div>
+                    <Clock size={18} color="#8C8880" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Floating Attribution/Logo hack */}
-      <div style={{
-        position: 'absolute',
-        bottom: '20px',
-        right: '100px',
-        zIndex: 5,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        opacity: 0.8
-      }}>
-        <div style={{ background: 'var(--accent-cyan)', color: 'black', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 900 }}>ARGO</div>
-        <span style={{ fontSize: '10px', color: 'var(--text-dim)' }}>© OpenStreetMap contributors</span>
-      </div>
+      {/* Styling */}
+      <style jsx global>{`
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(40px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .argo-custom-marker:hover .marker-pin {
+          transform: rotate(-45deg) scale(1.15);
+          box-shadow: 0 10px 24px rgba(0,0,0,0.3);
+        }
+        .glass-btn {
+          transition: all 0.2s ease;
+          border: 1px solid rgba(0,0,0,0.05);
+          cursor: pointer;
+        }
+        .glass-btn:hover {
+          transform: scale(1.05);
+          background: #f8f8f8 !important;
+        }
+      `}</style>
     </div>
   );
 }
