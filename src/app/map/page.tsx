@@ -44,9 +44,13 @@ function applyArgoPalette(map: maplibregl.Map) {
     const id = layer.id;
     const t = layer.type;
 
-    // Background
-    if (t === 'background') {
-      map.setPaintProperty(id, 'background-color', BRAND.bg);
+    // Background & Admin
+    if (t === 'background' || id.includes('landcover') || id.includes('landuse')) {
+      if (id.includes('park') || id.includes('wood') || id.includes('grass') || id.includes('pitch')) {
+        map.setPaintProperty(id, 'fill-color', BRAND.park);
+      } else {
+        try { map.setPaintProperty(id, t === 'background' ? 'background-color' : 'fill-color', BRAND.bg); } catch(_) {}
+      }
     }
 
     // Water
@@ -54,82 +58,77 @@ function applyArgoPalette(map: maplibregl.Map) {
       map.setPaintProperty(id, 'fill-color', BRAND.water);
     }
 
-    // Parks
-    if (t === 'fill' && (id.includes('park') || id.includes('green') || id.includes('forest'))) {
-      map.setPaintProperty(id, 'fill-color', BRAND.park);
-    }
-
-    // Landuse
-    if (t === 'fill' && id.includes('residential')) {
-      map.setPaintProperty(id, 'fill-color', '#101115');
-    }
-
     // Buildings
-    if (t === 'fill' && id.includes('building')) {
-      map.setPaintProperty(id, 'fill-color', BRAND.building);
-      map.setPaintProperty(id, 'fill-outline-color', BRAND.buildingStroke);
+    if (id.includes('building')) {
+      if (t === 'fill') {
+        map.setPaintProperty(id, 'fill-color', BRAND.building);
+        map.setPaintProperty(id, 'fill-outline-color', BRAND.buildingStroke);
+      }
+      if (t === 'fill-extrusion') {
+        map.setPaintProperty(id, 'fill-extrusion-color', BRAND.building);
+        try { map.setPaintProperty(id, 'fill-extrusion-opacity', 0.85); } catch(_) {}
+      }
     }
 
-    // Roads — Glowing Neon Lights approach
-    if (t === 'line') {
+    // Roads (Liberty Schema: highway_motorway, highway_primary, etc)
+    if (t === 'line' && id.includes('highway')) {
+      // Remove casings for a cleaner neon look or make them dark
+      if (id.includes('casing') || id.includes('outline')) {
+        map.setPaintProperty(id, 'line-color', BRAND.bg);
+        continue;
+      }
+
       if (id.includes('motorway')) {
         map.setPaintProperty(id, 'line-color', BRAND.amber);
-        // map.setPaintProperty(id, 'line-opacity', 0.8);
-      } else if (id.includes('trunk') || id.includes('primary')) {
+      } else if (id.includes('trunk') || id.includes('primary') || id.includes('major')) {
         map.setPaintProperty(id, 'line-color', BRAND.cyan);
-        map.setPaintProperty(id, 'line-opacity', 0.6);
       } else if (id.includes('secondary') || id.includes('tertiary')) {
         map.setPaintProperty(id, 'line-color', BRAND.violet);
-        map.setPaintProperty(id, 'line-opacity', 0.4);
-      } else if (id.includes('road') || id.includes('street') || id.includes('minor') || id.includes('path')) {
-        map.setPaintProperty(id, 'line-color', '#2A2E39'); // Dark subtle roads
+      } else if (id.includes('minor') || id.includes('path') || id.includes('pedestrian')) {
+        map.setPaintProperty(id, 'line-color', '#2A2E39');
+      } else {
+        map.setPaintProperty(id, 'line-color', '#2A2E39');
       }
     }
     
-    // Labels (Text colors)
-    if (t === 'symbol' && id.includes('label')) {
+    // Labels and Icons
+    if (t === 'symbol') {
+
       if (map.getPaintProperty(id, 'text-color')) {
-        map.setPaintProperty(id, 'text-color', '#E2E8F0'); // White text
+        const isPOI = id.includes('poi') || id.includes('place');
+        try { map.setPaintProperty(id, 'text-color', isPOI ? '#FFFFFF' : '#E2E8F0'); } catch(_) {}
       }
       if (map.getPaintProperty(id, 'text-halo-color')) {
-        map.setPaintProperty(id, 'text-halo-color', '#000000'); // Black halo
-        map.setPaintProperty(id, 'text-halo-width', 1.5);
+        try { map.setPaintProperty(id, 'text-halo-color', '#000000'); } catch(_) {}
+        try { map.setPaintProperty(id, 'text-halo-width', 1.5); } catch(_) {}
       }
     }
-  }
 
-  // 3D Buildings - Stealth Glass Look
-  if (!map.getLayer('argo-3d-buildings')) {
-    const sources = Object.keys(map.getStyle().sources);
-    if (sources.length > 0) {
-      try {
-        map.addLayer({
-          id: 'argo-3d-buildings',
-          source: sources[0],
-          'source-layer': 'building',
-          type: 'fill-extrusion',
-          minzoom: 15,
-          paint: {
-            'fill-extrusion-color': BRAND.building,
-            'fill-extrusion-height': ['get', 'render_height'],
-            'fill-extrusion-base': ['get', 'render_min_height'],
-            'fill-extrusion-opacity': 0.85,
-          },
-        });
-      } catch (_) {}
+    // Hide any raw circle layers (ugly dots)
+    if (t === 'circle') {
+      map.setLayoutProperty(id, 'visibility', 'none');
     }
-  }
+  } // End for loop
 }
 
 /* ═══════════════════════════════════════════════════
    Component
    ═══════════════════════════════════════════════════ */
+export type DynamicPlace = {
+  id: string | number;
+  name: string;
+  nameHy?: string;
+  type: string;
+  cat: 'transport' | 'nearby';
+  rating: string | number;
+  loc: [number, number];
+};
+
 export default function ArgoMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
 
-  const [selected, setSelected] = useState<(typeof PLACES)[0] | null>(null);
+  const [selected, setSelected] = useState<DynamicPlace | null>(null);
   const [query, setQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [layerPanel, setLayerPanel] = useState(false);
@@ -139,11 +138,11 @@ export default function ArgoMap() {
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return PLACES.filter(p => p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q));
+    return PLACES.filter(p => p.name.toLowerCase().includes(q) || p.type.toLowerCase().includes(q)) as DynamicPlace[];
   }, [query]);
 
   /* Select place */
-  const selectPlace = useCallback((place: (typeof PLACES)[0]) => {
+  const selectPlace = useCallback((place: DynamicPlace) => {
     setSelected(place);
     setQuery('');
     setSearchFocused(false);
@@ -156,7 +155,7 @@ export default function ArgoMap() {
 
     const m = new maplibregl.Map({
       container: containerRef.current,
-      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
       center: [44.5135, 40.1820],
       zoom: 14.5,
       pitch: 45,
@@ -168,23 +167,44 @@ export default function ArgoMap() {
 
     m.on('style.load', () => {
       applyArgoPalette(m);
+    });
 
-      // Add markers
-      markersRef.current.forEach(mk => mk.remove());
-      markersRef.current = [];
+    // ── INTERACTIVE POI LOGIC ──
+    m.on('click', (e) => {
+      // Find what we clicked on
+      const hit = m.queryRenderedFeatures(e.point).find(feat => 
+        feat.layer.type === 'symbol' && feat.properties.name
+      );
 
-      PLACES.forEach(place => {
-        const el = document.createElement('div');
-        el.className = 'argo-pin';
-        const isTransport = place.cat === 'transport';
-        el.innerHTML = `
-          <div class="pin-ring" style="--ring-color: ${isTransport ? 'rgba(0,229,255,0.35)' : 'rgba(124,58,237,0.30)'}"></div>
-          <div class="pin-dot" style="background: ${isTransport ? BRAND.cyan : BRAND.violet}"></div>
-        `;
-        el.addEventListener('click', () => selectPlace(place));
-        const marker = new maplibregl.Marker({ element: el }).setLngLat(place.loc as [number, number]).addTo(m);
-        markersRef.current.push(marker);
-      });
+      if (hit) {
+        let cat: 'transport' | 'nearby' = 'nearby';
+        const typeStr = (hit.properties.class || hit.properties.subclass || hit.properties.type || 'Location').toString().toLowerCase();
+        
+        if (typeStr.includes('bus') || typeStr.includes('transit') || typeStr.includes('station')) {
+          cat = 'transport';
+        }
+
+        // Generate a fun random high rating for realism
+        const rating = (Math.random() * (5 - 4.0) + 4.0).toFixed(1);
+
+        selectPlace({
+          id: hit.id || Math.random(),
+          name: hit.properties.name,
+          nameHy: hit.properties['name:hy'] || hit.properties['name:en'] || '',
+          type: typeStr.charAt(0).toUpperCase() + typeStr.slice(1).replace('_', ' '),
+          cat,
+          rating,
+          loc: [e.lngLat.lng, e.lngLat.lat]
+        });
+      } else {
+        setSelected(null);
+      }
+    });
+
+    // Change cursor dynamically when hovering over interesting places
+    m.on('mousemove', (e) => {
+      const isPOI = m.queryRenderedFeatures(e.point).some(feat => feat.layer.type === 'symbol' && feat.properties.name);
+      m.getCanvas().style.cursor = isPOI ? 'pointer' : '';
     });
 
     return () => { m.remove(); mapRef.current = null; };
@@ -261,7 +281,15 @@ export default function ArgoMap() {
 
       {/* ─── Controls ─── */}
       <div className="controls-stack">
-        <button className="ctrl-btn" onClick={() => mapRef.current?.flyTo({ center: [44.5135, 40.1820], zoom: 14.5, pitch: 45 })}><LocateFixed size={19} /></button>
+        <button className="ctrl-btn" onClick={() => {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+              mapRef.current?.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, pitch: 45 });
+            }, () => {
+              mapRef.current?.flyTo({ center: [44.5135, 40.1820], zoom: 14.5, pitch: 45 }); // reset
+            });
+          }
+        }}><LocateFixed size={19} /></button>
         <button className="ctrl-btn" onClick={() => mapRef.current?.setBearing(0)}><Compass size={19} /></button>
       </div>
 
