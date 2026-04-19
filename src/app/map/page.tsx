@@ -260,7 +260,25 @@ export default function ArgoMap() {
           loc: [e.lngLat.lng, e.lngLat.lat]
         });
       } else {
-        setSelected(null);
+        // No vector feature clicked — ask Rust Spatial Engine for the nearest place
+        fetch(`http://127.0.0.1:4002/api/reverse?lng=${e.lngLat.lng}&lat=${e.lngLat.lat}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.place) {
+              selectPlace({
+                id: data.place.id,
+                name: data.place.name,
+                nameHy: data.place.name_hy || '',
+                type: data.place.place_type || 'Location',
+                cat: data.place.place_type?.includes('Station') ? 'transport' : 'nearby',
+                rating: '4.5',
+                loc: [data.place.lng, data.place.lat]
+              });
+            } else {
+              setSelected(null);
+            }
+          })
+          .catch(() => setSelected(null));
       }
     });
 
