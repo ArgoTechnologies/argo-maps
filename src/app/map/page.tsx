@@ -145,9 +145,15 @@ export default function ArgoMap() {
     
     // We are hitting a blazing fast Go API. We don't need artificial debounce delays!
     const controller = new AbortController();
-    fetch(`http://127.0.0.1:8080/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+    fetch(`http://127.0.0.1:4000/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
       .then(res => res.json())
-      .then(data => setResults(data || []))
+      .then(data => {
+        if (!data) { setResults([]); return; }
+        // The Go API currently serves [Lat, Lng]. MapLibre expects [Lng, Lat].
+        // Swap them immediately so the entire frontend runs on standard GeoJSON coords.
+        const normalized = data.map((p: any) => ({ ...p, loc: [p.loc[1], p.loc[0]] }));
+        setResults(normalized);
+      })
       .catch(err => {
         if (err.name !== 'AbortError') console.error('Go API Error:', err);
       });
@@ -262,7 +268,7 @@ export default function ArgoMap() {
         });
       } else {
         // No vector feature clicked — ask Rust Spatial Engine for the nearest place
-        fetch(`http://127.0.0.1:8080/api/spatial/reverse?lng=${e.lngLat.lng}&lat=${e.lngLat.lat}`)
+        fetch(`http://127.0.0.1:4002/api/spatial/reverse?lng=${e.lngLat.lng}&lat=${e.lngLat.lat}`)
           .then(res => res.json())
           .then(data => {
             if (data && data.place) {

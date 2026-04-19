@@ -165,13 +165,11 @@ export default function DocsPage() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {[
-              { method: 'GET', path: '/maps/style.json', desc: 'MapLibre стиль карты' },
-              { method: 'GET', path: '/tiles/{z}/{x}/{y}.mvt', desc: 'Векторные тайлы' },
-              { method: 'GET', path: '/transport/stops', desc: 'Все остановки Армении' },
-              { method: 'GET', path: '/transport/stops/{id}/arrivals', desc: 'Live прибытие автобусов' },
-              { method: 'GET', path: '/transport/routes', desc: 'Все маршруты' },
-              { method: 'GET', path: '/transport/routes/{id}/full', desc: 'Маршрут с геометрией' },
-              { method: 'GET', path: '/map/nearby?loc=lat,lng&radius=3000', desc: 'Ближайшие остановки (C++ Quadtree)' },
+              { method: 'GET', path: '/tiles/{z}/{x}/{y}.mvt', desc: 'Векторные тайлы (Martin)' },
+              { method: 'GET', path: '/api/search?q={query}', desc: 'Fuzzy Search API (Go + Levenshtein, Multi-lang)' },
+              { method: 'GET', path: '/api/spatial/reverse?lng={l}&lat={l}', desc: 'Reverse Geocoding (Rust K-D Tree)' },
+              { method: 'GET', path: '/api/spatial/nearby?lng={l}&lat={l}&k={num}', desc: 'Ближайшие объекты инфраструктуры (Rust K-D Tree)' },
+              { method: 'GET', path: 'wss://bus.argotech.am/ws', desc: 'Live GPS сокеты автобусов Еревана (Go Socket)' },
             ].map((api, i) => (
               <div key={i} className="glass" style={{ display: 'flex', alignItems: 'center', padding: '1rem 1.5rem', borderRadius: '12px', gap: '2rem' }}>
                 <span style={{ color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.8rem', width: '40px' }}>{api.method}</span>
