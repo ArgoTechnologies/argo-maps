@@ -1,0 +1,38 @@
+# Argo Maps — Tile Server (Simplified)
+# Uses PMTiles file instead of PostGIS pipeline
+#
+# Setup:
+#   1. Download Armenia tiles:
+#      wget -O tiles/armenia.pmtiles https://build.protomaps.com/20240101.pmtiles
+#      (or use the download script: ./scripts/download-tiles.sh)
+#   2. docker compose up -d
+#   3. http://localhost:3100 — Martin catalog
+
+services:
+
+  # ─── Martin: serves PMTiles directly (no PostGIS needed) ───
+  martin:
+    image: ghcr.io/maplibre/martin:latest
+    container_name: argo-martin
+    ports:
+      - "3100:3000"
+    volumes:
+      - ./tiles:/tiles
+    command: ["/tiles"]
+    restart: unless-stopped
+
+  # ─── Nginx: Reverse proxy with CORS & caching ───
+  nginx:
+    image: nginx:alpine
+    container_name: argo-nginx
+    depends_on:
+      martin:
+        condition: service_started
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    restart: unless-stopped
+
+volumes:
+  pgdata:

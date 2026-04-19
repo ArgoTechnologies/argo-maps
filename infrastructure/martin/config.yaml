@@ -1,0 +1,87 @@
+# Martin Tile Server Configuration for Argo Maps
+# Docs: https://maplibre.org/martin/
+
+listen_addresses: '0.0.0.0:3000'
+
+# PostgreSQL connection
+postgres:
+  connection_string: ${DATABASE_URL}
+
+  # Automatically discover tables with geometry columns
+  auto_publish:
+    tables:
+      from_schemas: public
+    functions: false
+
+  # Explicit table configs for fine-tuned control
+  tables:
+    transportation:
+      schema: public
+      table: planet_osm_roads
+      srid: 3857
+      geometry_column: way
+      geometry_type: LINESTRING
+      properties:
+        highway: highway
+        name: name
+        "name:hy": "name:hy"
+        "name:ru": "name:ru"
+        ref: ref
+      minzoom: 4
+      maxzoom: 14
+
+    building:
+      schema: public
+      table: planet_osm_polygon
+      srid: 3857
+      geometry_column: way
+      geometry_type: POLYGON
+      properties:
+        building: building
+        name: name
+        "name:hy": "name:hy"
+        height: height
+      minzoom: 13
+      maxzoom: 14
+
+    water:
+      schema: public
+      table: planet_osm_polygon
+      srid: 3857
+      geometry_column: way
+      geometry_type: POLYGON
+      properties:
+        natural: natural
+        water: water
+        name: name
+      minzoom: 0
+      maxzoom: 14
+
+    landuse:
+      schema: public
+      table: planet_osm_polygon
+      srid: 3857
+      geometry_column: way
+      geometry_type: POLYGON
+      properties:
+        landuse: landuse
+        leisure: leisure
+        name: name
+      minzoom: 8
+      maxzoom: 14
+
+    place:
+      schema: public
+      table: planet_osm_point
+      srid: 3857
+      geometry_column: way
+      geometry_type: POINT
+      properties:
+        place: place
+        name: name
+        "name:hy": "name:hy"
+        "name:ru": "name:ru"
+        "name:en": "name:en"
+        population: population
+      minzoom: 3
+      maxzoom: 14
