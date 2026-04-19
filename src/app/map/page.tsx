@@ -487,6 +487,66 @@ export default function ArgoMap() {
         @keyframes ring-pulse{0%{transform:scale(.7);opacity:.7}100%{transform:scale(2.2);opacity:0}}
         @keyframes card-in{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+        @keyframes slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+        /* ══════════════════════════════════════
+           MOBILE RESPONSIVE (< 768px)
+           Bottom Sheet Pattern like Yandex Go
+           ══════════════════════════════════════ */
+        @media(max-width:767px){
+          /* Search bar: full width, compact */
+          .search-area{width:calc(100% - 32px);left:16px;top:12px}
+          .search-bar{padding:6px 8px;border-radius:14px}
+          .brand-pill{padding:6px 10px;font-size:10px}
+          .search-bar input{font-size:.85rem}
+          .results-dropdown{border-radius:14px;max-height:40vh;overflow-y:auto}
+
+          /* Layers: move below search */
+          .layers-area{top:12px;right:16px}
+          .fab{width:42px;height:42px;border-radius:14px}
+
+          /* Controls: bottom left on mobile */
+          .controls-stack{bottom:24px;right:16px}
+          .ctrl-btn{width:40px;height:40px}
+
+          /* Detail Card: BOTTOM SHEET! */
+          .detail-card{
+            position:fixed !important;
+            top:auto !important;
+            bottom:0 !important;
+            left:0 !important;
+            right:0 !important;
+            width:100% !important;
+            max-height:70vh;
+            border-radius:24px 24px 0 0 !important;
+            animation:slide-up .4s cubic-bezier(.16,1,.3,1) !important;
+            overflow-y:auto;
+          }
+          .detail-hero{height:140px}
+          .detail-body{padding:16px}
+          .detail-body h2{font-size:1.2rem;margin-bottom:14px}
+          .detail-actions{gap:8px;margin-bottom:16px}
+          .btn-primary{padding:12px;font-size:.85rem;border-radius:14px}
+          .btn-secondary{width:48px;border-radius:14px}
+          .departures{padding:14px;border-radius:14px}
+
+          /* Add a drag handle at the top of the bottom sheet */
+          .detail-card::before{
+            content:'';
+            display:block;
+            width:36px;
+            height:4px;
+            background:rgba(255,255,255,.2);
+            border-radius:4px;
+            margin:10px auto 4px;
+          }
+        }
+
+        /* Tablet tweaks (768-1024) */
+        @media(min-width:768px) and (max-width:1024px){
+          .search-area{width:340px}
+          .detail-card{width:340px}
+        }
       `}</style>
     </div>
   );
