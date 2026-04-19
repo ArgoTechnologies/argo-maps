@@ -11,132 +11,124 @@ import {
   X, 
   ChevronRight, 
   Zap, 
-  Map as MapIcon, 
   LocateFixed, 
   Settings2,
   Clock,
   Star,
-  MapPin
+  MapPin,
+  Compass,
+  LayoutGrid,
+  Heart
 } from 'lucide-react';
 
 const ARGO_UI_CONFIG = {
-  primaryColor: '#00f2ff',
-  bgColor: '#F8F6F1',
-  textColor: '#2C2A26',
-  mutedColor: '#8C8880'
+  primary: '#00f2ff',
+  secondary: '#8147ff',
+  bg: '#F8F6F1',
+  text: '#1C1917',
+  muted: '#78716c',
+  border: 'rgba(0, 0, 0, 0.05)'
 };
 
-const mockBusStops = [
-  { id: 1, name: 'Republic Square', loc: [44.5126, 40.1776], buses: ['1', '14', '33'], type: 'Metro Station' },
-  { id: 2, name: 'Cascade Complex', loc: [44.5152, 40.1888], buses: ['1', '5', '8'], type: 'Bus Stop' },
-  { id: 3, name: 'Opera House', loc: [44.5142, 40.1843], buses: ['11', '14', '20'], type: 'Bus Stop' },
-  { id: 4, name: 'Vernissage Market', loc: [44.5186, 40.1764], buses: ['2', '12'], type: 'Cultural Site' },
-  { id: 5, name: 'Yeritasardakan', loc: [44.5204, 40.1866], buses: ['Metro'], type: 'Metro Station' },
+// Advanced Map Style definition directly in code for instant customization
+const ARGO_V2_STYLE: any = {
+  "version": 8,
+  "sources": {
+    "argo-tiles": {
+      "type": "vector",
+      "tiles": ["https://tiles.basemaps.cartocdn.com/gl/positron-gl-style/style.json"], // Fallback vector
+    }
+  },
+  "glyphs": "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#FDFCFB" } }
+  ]
+};
+
+const mockStops = [
+  { id: 1, name: 'Republic Square', loc: [44.5126, 40.1776], type: 'Metro/Bus', rating: 4.9, time: '3 min' },
+  { id: 2, name: 'Cascade Complex', loc: [44.5152, 40.1888], type: 'Landmark', rating: 4.8, time: '8 min' },
+  { id: 3, name: 'Opera Theatre', loc: [44.5142, 40.1843], type: 'Opera Stop', rating: 4.9, time: '5 min' },
+  { id: 4, name: 'Northern Avenue', loc: [44.5145, 40.1818], type: 'Shopping District', rating: 4.7, time: '2 min' }
 ];
 
-export default function ArgoMapExplorer() {
+export default function ArgoMapV2() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selected, setSelected] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState('explore');
 
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Use a reliable base style but we will customize it to the "Argo" palette
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: 'https://tiles.basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-      center: [44.512, 40.183],
-      zoom: 14.5,
-      pitch: 45,
-      bearing: -17,
+      center: [44.5135, 40.1820],
+      zoom: 15,
+      pitch: 55,
+      bearing: -20,
       attributionControl: false,
     });
 
     map.current.on('style.load', () => {
       if (!map.current) return;
-      
-      // Override colors to match Argo's warm off-white and electric cyan brand
+
+      // Road Design Refinement
       const style = map.current.getStyle();
       style.layers?.forEach(layer => {
         if (layer.type === 'background') {
-          map.current?.setPaintProperty(layer.id, 'background-color', ARGO_UI_CONFIG.bgColor);
+          map.current?.setPaintProperty(layer.id, 'background-color', '#F8F7F4');
         }
+        
+        if (layer.type === 'line' && (layer.id.includes('road') || layer.id.includes('highway'))) {
+          // Main arteries - Premium Yellow/Gold
+          if (layer.id.includes('primary') || layer.id.includes('motorway')) {
+            map.current?.setPaintProperty(layer.id, 'line-color', '#FFD891');
+          } else {
+            map.current?.setPaintProperty(layer.id, 'line-color', '#FFFFFF');
+          }
+        }
+        
         if (layer.type === 'fill' && layer.id.includes('water')) {
-          map.current?.setPaintProperty(layer.id, 'fill-color', '#A8C8E8');
-        }
-        if (layer.type === 'fill' && (layer.id.includes('park') || layer.id.includes('green') || layer.id.includes('wood'))) {
-          map.current?.setPaintProperty(layer.id, 'fill-color', '#C8DDB0');
-        }
-        if (layer.type === 'line' && (layer.id.includes('motorway') || layer.id.includes('primary'))) {
-          map.current?.setPaintProperty(layer.id, 'line-color', '#F0C070');
+          map.current?.setPaintProperty(layer.id, 'fill-color', '#B8D5F0');
         }
       });
 
-      // Add custom 3D buildings at high zoom
-      if (!map.current.getLayer('3d-buildings')) {
-        map.current.addLayer({
-          'id': '3d-buildings',
-          'source': 'carto',
-          'source-layer': 'building',
-          'type': 'fill-extrusion',
-          'minzoom': 15,
-          'paint': {
-            'fill-extrusion-color': '#E8E4DC',
-            'fill-extrusion-height': ['get', 'render_height'],
-            'fill-extrusion-base': ['get', 'render_min_height'],
-            'fill-extrusion-opacity': 0.8
-          }
-        });
-      }
+      // Buildings 3D Styling
+      map.current.addLayer({
+        'id': '3d-buildings-pro',
+        'source': 'carto',
+        'source-layer': 'building',
+        'type': 'fill-extrusion',
+        'minzoom': 15,
+        'paint': {
+          'fill-extrusion-color': '#EEEBE6',
+          'fill-extrusion-height': ['get', 'render_height'],
+          'fill-extrusion-base': ['get', 'render_min_height'],
+          'fill-extrusion-opacity': 0.9
+        }
+      });
 
-      // Add custom markers
-      mockBusStops.forEach(stop => {
+      // Markers
+      mockStops.forEach(stop => {
         const el = document.createElement('div');
-        el.className = 'argo-custom-marker';
-        el.style.cursor = 'pointer';
+        el.className = 'argo-marker-v2';
         el.innerHTML = `
-          <div style="
-            background: #ffffff; 
-            width: 36px; 
-            height: 36px; 
-            border-radius: 50% 50% 50% 0; 
-            transform: rotate(-45deg); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            border: 3px solid #ffffff;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.25);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          " class="marker-pin">
-            <div style="
-              width: 16px; 
-              height: 16px; 
-              background: #00f2ff; 
-              border-radius: 50%;
-              transform: rotate(45deg);
-            "></div>
+          <div class="marker-wrapper">
+            <div class="marker-pulse"></div>
+            <div class="marker-icon">
+              <div class="dot"></div>
+            </div>
           </div>
         `;
 
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          setSelectedItem(stop);
-          setSidebarOpen(true);
-          map.current?.flyTo({ 
-            center: stop.loc as any, 
-            zoom: 16.5, 
-            pitch: 60, 
-            duration: 1500,
-            offset: [150, 0] // Offset to make room for sidebar
-          });
+        el.addEventListener('click', () => {
+          setSelected(stop);
+          map.current?.flyTo({ center: stop.loc as any, zoom: 17, pitch: 60, duration: 2000 });
         });
 
-        new maplibregl.Marker(el)
-          .setLngLat(stop.loc as any)
-          .addTo(map.current!);
+        new maplibregl.Marker(el).setLngLat(stop.loc as any).addTo(map.current!);
       });
     });
 
@@ -144,202 +136,251 @@ export default function ArgoMapExplorer() {
   }, []);
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#F8F6F1', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#F8F7F4', color: ARGO_UI_CONFIG.text }}>
       
-      {/* Search Bar - Top Floating */}
+      {/* Search Console - High Design */}
       <div style={{
         position: 'absolute',
         top: '24px',
         left: '24px',
-        width: '420px',
+        width: '440px',
         zIndex: 1000,
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '16px'
       }}>
-        <div className="glass" style={{
-          padding: '12px 20px',
-          borderRadius: '16px',
+        <div className="glass-premium" style={{
+          padding: '8px',
+          borderRadius: '20px',
           display: 'flex',
           alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-          border: '1px solid rgba(255,255,255,0.4)',
-          background: 'rgba(255,255,255,0.95)'
+          gap: '8px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.08)',
+          background: 'rgba(255, 255, 255, 0.8)'
         }}>
-          <div style={{ background: '#00f2ff', color: 'black', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 900, letterSpacing: '0.05em' }}>ARGO</div>
-          <input 
-            type="text" 
-            placeholder="Search stops, places, routes..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#2C2A26',
-              fontSize: '1rem',
-              width: '100%',
-              outline: 'none',
-              fontWeight: 500
-            }}
-          />
-          <Search size={20} color="#8C8880" />
+          <div style={{
+            background: 'linear-gradient(135deg, #00f2ff, #8147ff)',
+            color: 'white',
+            padding: '10px 14px',
+            borderRadius: '16px',
+            fontWeight: 900,
+            fontSize: '11px',
+            letterSpacing: '0.1em'
+          }}>ARGO</div>
+          
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '8px' }}>
+            <Search size={18} color="#A8A29E" />
+            <input 
+              type="text" 
+              placeholder="Where are we going?" 
+              style={{
+                background: 'transparent',
+                border: 'none',
+                fontSize: '1rem',
+                fontWeight: 600,
+                width: '100%',
+                outline: 'none',
+                color: '#1C1917'
+              }}
+            />
+          </div>
+          
+          <button style={{ width: '40px', height: '40px', borderRadius: '14px', background: '#F5F5F4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Settings2 size={18} />
+          </button>
         </div>
 
+        {/* Quick Menu */}
         <div style={{ display: 'flex', gap: '8px' }}>
           {[
-            { label: 'Transport', icon: Bus },
-            { label: 'Saved', icon: Star },
-            { label: 'Nearby', icon: MapPin },
+            { id: 'transport', label: 'Bus & Metro', icon: Bus },
+            { id: 'saved', label: 'Favorites', icon: Heart },
+            { id: 'all', label: 'Explore', icon: LayoutGrid }
           ].map(item => (
-            <button key={item.label} className="glass" style={{
-              padding: '8px 16px',
-              borderRadius: '12px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'rgba(255,255,255,0.95)',
-              color: '#444',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-            }}>
-              <item.icon size={15} />
+            <button key={item.id} className="quick-btn">
+              <item.icon size={16} />
               {item.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Map Content */}
+      {/* Map Body */}
       <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
 
-      {/* Controls - Bottom Right */}
-      <div style={{
-        position: 'absolute',
-        bottom: '32px',
-        right: '24px',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
+      {/* Control Stack */}
+      <div style={{ 
+        position: 'absolute', 
+        bottom: '40px', 
+        right: '24px', 
+        zIndex: 1000, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '12px' 
       }}>
-        <button className="glass-btn" style={{ width: '52px', height: '52px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: '#2C2A26', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-          <LocateFixed size={22} />
-        </button>
-        <button className="glass-btn" style={{ width: '52px', height: '52px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', color: '#2C2A26', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-          <Layers size={22} />
-        </button>
+        <div className="glass-btn-stack">
+          <button><LocateFixed size={20} /></button>
+          <div style={{ width: '20px', height: '1px', background: 'rgba(0,0,0,0.05)', marginLeft: '12px' }} />
+          <button><Compass size={20} /></button>
+          <div style={{ width: '20px', height: '1px', background: 'rgba(0,0,0,0.05)', marginLeft: '12px' }} />
+          <button><Layers size={20} /></button>
+        </div>
       </div>
 
-      {/* Floating Info Panel - Sliding from Right */}
-      {selectedItem && sidebarOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '24px',
-          right: '24px',
-          width: '420px',
-          height: 'calc(100vh - 48px)',
-          zIndex: 2000,
-          background: '#ffffff',
-          borderRadius: '28px',
-          boxShadow: '-10px 0 60px rgba(0,0,0,0.15)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          animation: 'slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}>
-          <div style={{ position: 'relative', height: '240px', background: '#f0f0f0' }}>
-            <div style={{ width: '100%', height: '100%', background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.4))', position: 'absolute', zIndex: 1 }} />
-            <img 
-              src={`https://images.unsplash.com/photo-1579294800821-694d95e86143?q=80&w=1000&auto=format&fit=crop`} 
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-              alt="Yerevan City"
-            />
-            <button 
-              onClick={() => setSidebarOpen(false)}
-              style={{ 
-                position: 'absolute', 
-                top: '20px', 
-                right: '20px', 
-                background: 'rgba(255,255,255,0.9)', 
-                color: '#2C2A26', 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 10,
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <X size={18} />
-            </button>
+      {/* Location Details - Floating Modal Design */}
+      {selected && (
+        <div className="location-card">
+          <div style={{ position: 'relative', height: '180px' }}>
+            <img src="https://images.unsplash.com/photo-1549918830-11ec3d403619?q=80&w=1000&auto=format&fit=crop" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Yerevan" />
+            <button onClick={() => setSelected(null)} className="close-btn"><X size={18} /></button>
+            <div className="rating-pill">
+              <Star size={14} fill="#FACC15" color="#FACC15" />
+              <span>{selected.rating}</span>
+            </div>
           </div>
-
-          <div style={{ padding: '32px', flex: 1, overflowY: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <span style={{ background: '#00f2ff', color: 'black', fontSize: '0.7rem', fontWeight: 900, padding: '4px 10px', borderRadius: '6px', letterSpacing: '0.05em' }}>
-                {selectedItem.type.toUpperCase()}
-              </span>
-              <div style={{ display: 'flex', gap: '4px', color: '#f59e0b', alignItems: 'center' }}>
-                <Star size={14} fill="#f59e0b" />
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2C2A26' }}>4.9</span>
-              </div>
+          
+          <div style={{ padding: '24px' }}>
+            <div style={{ color: ARGO_UI_CONFIG.muted, fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>
+              {selected.type}
             </div>
-
-            <h2 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#2C2A26', marginBottom: '20px', letterSpacing: '-0.02em' }}>{selectedItem.name}</h2>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: '20px' }}>{selected.name}</h2>
             
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
-              <button style={{ flex: 1, background: '#2C2A26', color: 'white', padding: '14px', borderRadius: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', border: 'none', cursor: 'pointer' }}>
-                <Navigation2 size={20} fill="white" /> Get Directions
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '28px' }}>
+              <button className="primary-action-btn">
+                <Navigation2 size={20} fill="white" />
+                <span>Go there</span>
               </button>
-              <button style={{ background: '#F0F0F0', width: '52px', borderRadius: '16px', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <Star size={20} />
-              </button>
+              <button className="secondary-action-btn"><Heart size={20} /></button>
             </div>
 
-            <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '28px' }}>
-              <h4 style={{ color: '#8C8880', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '20px', letterSpacing: '0.1em' }}>Live Bus Arrivals</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {selectedItem.buses.map((bus: string) => (
-                  <div key={bus} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px', background: '#F8F9FA', borderRadius: '20px', border: '1px solid #f0f0f0' }}>
-                    <div style={{ background: '#00f2ff', color: 'black', width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.1rem' }}>
-                      {bus}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, color: '#2C2A26', fontSize: '0.95rem' }}>Towards Centre</div>
-                      <div style={{ fontSize: '0.85rem', color: '#00f2ff', fontWeight: 800 }}>Arriving in {Math.floor(Math.random() * 10) + 2} mins</div>
-                    </div>
-                    <Clock size={18} color="#8C8880" />
-                  </div>
-                ))}
+            <div style={{ borderTop: '1px solid #F5F5F4', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800 }}>LIVE DEPARTURES</h4>
+                <div style={{ color: '#22C55E', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Zap size={12} fill="#22C55E" /> Live
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                 <div className="departure-item">
+                    <div className="route-id">14</div>
+                    <div className="route-info">to Massiv</div>
+                    <div className="route-time">{selected.time}</div>
+                 </div>
+                 <div className="departure-item">
+                    <div className="route-id">1</div>
+                    <div className="route-info">to Kentron</div>
+                    <div className="route-time">12 min</div>
+                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Styling */}
       <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .glass-premium {
+          backdrop-filter: blur(20px) saturate(180%);
+          background: rgba(255, 255, 255, 0.85);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .quick-btn {
+          background: rgba(255, 255, 255, 0.95);
+          padding: 10px 18px;
+          border-radius: 14px;
+          font-weight: 700;
+          font-size: 0.85rem;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+          border: 1px solid rgba(0,0,0,0.02);
+          transition: 0.2s;
+        }
+        .quick-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+          background: white;
+        }
+
+        .glass-btn-stack {
+          background: white;
+          padding: 8px;
+          border-radius: 20px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .glass-btn-stack button {
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: 0.2s;
+        }
+        .glass-btn-stack button:hover {
+          background: #F5F5F4;
+        }
+
+        .argo-marker-v2 { cursor: pointer; }
+        .marker-wrapper { position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .marker-pulse { 
+          position: absolute; width: 100%; height: 100%; border-radius: 50%;
+          background: rgba(0, 242, 255, 0.4); animation: pulse 2s infinite;
+        }
+        .marker-icon {
+          width: 20px; height: 20px; background: white; border-radius: 50%;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; z-index: 10;
+        }
+        .dot { width: 8px; height: 8px; background: linear-gradient(135deg, #00f2ff, #8147ff); border-radius: 50%; }
+
+        .location-card {
+          position: absolute; top: 24px; right: 24px; width: 420px; background: white;
+          border-radius: 32px; box-shadow: 0 30px 60px rgba(0,0,0,0.15); z-index: 2000;
+          overflow: hidden; animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .close-btn { 
+          position: absolute; top: 16px; right: 16px; width: 36px; height: 36px;
+          background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .rating-pill {
+          position: absolute; bottom: 16px; left: 16px; background: white;
+          padding: 6px 12px; border-radius: 100px; display: flex; align-items: center; gap: 6px;
+          font-weight: 800; font-size: 0.85rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .primary-action-btn {
+          flex: 1; background: #1C1917; color: white; padding: 16px; border-radius: 18px;
+          font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 12px;
+        }
+        .secondary-action-btn {
+          width: 56px; background: #F5F5F4; border-radius: 18px; display: flex; align-items: center; justify-content: center;
+        }
+
+        .departure-item {
+          display: flex; align-items: center; gap: 14px; padding: 14px;
+          background: #FBFBFA; border-radius: 18px; border: 1px solid #F5F5F4;
+        }
+        .route-id { background: #00f2ff; color: black; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; }
+        .route-info { flex: 1; font-weight: 700; font-size: 0.95rem; }
+        .route-time { color: #00f2ff; font-weight: 800; font-size: 0.9rem; }
+
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.6; }
+          100% { transform: scale(2.4); opacity: 0; }
+        }
         @keyframes slideIn {
-          from { opacity: 0; transform: translateX(40px); }
+          from { opacity: 0; transform: translateX(30px); }
           to { opacity: 1; transform: translateX(0); }
-        }
-        .argo-custom-marker:hover .marker-pin {
-          transform: rotate(-45deg) scale(1.15);
-          box-shadow: 0 10px 24px rgba(0,0,0,0.3);
-        }
-        .glass-btn {
-          transition: all 0.2s ease;
-          border: 1px solid rgba(0,0,0,0.05);
-          cursor: pointer;
-        }
-        .glass-btn:hover {
-          transform: scale(1.05);
-          background: #f8f8f8 !important;
         }
       `}</style>
     </div>
