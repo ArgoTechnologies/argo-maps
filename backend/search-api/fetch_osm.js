@@ -47,7 +47,8 @@ const req = https.request(options, (res) => {
         if (seen.has(name)) return;
         seen.add(name);
         
-        const nameHy = el.tags["name:hy"] || el.tags.name;
+        const nameHy = el.tags["name:hy"] || el.tags.name || name;
+        const nameRu = el.tags["name:ru"] || name;
         let type = "Place";
         let cat = "nearby";
         
@@ -72,6 +73,7 @@ const req = https.request(options, (res) => {
           id: id,
           name: name,
           nameHy: nameHy,
+          nameRu: nameRu,
           type: type,
           cat: cat,
           rating: rating,

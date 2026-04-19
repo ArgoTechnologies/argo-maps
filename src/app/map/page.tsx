@@ -118,6 +118,7 @@ export type DynamicPlace = {
   id: string | number;
   name: string;
   nameHy?: string;
+  nameRu?: string;
   type: string;
   cat: 'transport' | 'nearby';
   rating: string | number;
@@ -144,7 +145,7 @@ export default function ArgoMap() {
     
     // We are hitting a blazing fast Go API. We don't need artificial debounce delays!
     const controller = new AbortController();
-    fetch(`http://127.0.0.1:4000/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+    fetch(`http://127.0.0.1:8080/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
       .then(res => res.json())
       .then(data => setResults(data || []))
       .catch(err => {
@@ -261,7 +262,7 @@ export default function ArgoMap() {
         });
       } else {
         // No vector feature clicked — ask Rust Spatial Engine for the nearest place
-        fetch(`http://127.0.0.1:4002/api/reverse?lng=${e.lngLat.lng}&lat=${e.lngLat.lat}`)
+        fetch(`http://127.0.0.1:8080/api/spatial/reverse?lng=${e.lngLat.lng}&lat=${e.lngLat.lat}`)
           .then(res => res.json())
           .then(data => {
             if (data && data.place) {
@@ -269,6 +270,7 @@ export default function ArgoMap() {
                 id: data.place.id,
                 name: data.place.name,
                 nameHy: data.place.name_hy || '',
+                nameRu: data.place.name_ru || '',
                 type: data.place.place_type || 'Location',
                 cat: data.place.place_type?.includes('Station') ? 'transport' : 'nearby',
                 rating: '4.5',
@@ -325,7 +327,10 @@ export default function ArgoMap() {
                 <div className="result-icon" style={{ background: r.cat === 'transport' ? 'rgba(0,229,255,0.12)' : 'rgba(124,58,237,0.10)' }}>
                   {r.cat === 'transport' ? <Bus size={15} color={BRAND.cyan} /> : <MapPin size={15} color={BRAND.violet} />}
                 </div>
-                <div><div className="result-name">{r.name}</div><div className="result-type">{r.type}</div></div>
+                <div>
+                  <div className="result-name">{r.name} {r.nameRu ? `· ${r.nameRu}` : ''}</div>
+                  <div className="result-type">{r.type} {r.nameHy ? `· ${r.nameHy}` : ''}</div>
+                </div>
               </button>
             )) : <div className="no-results">No places found</div>}
           </div>
@@ -390,6 +395,7 @@ export default function ArgoMap() {
           <div className="detail-body">
             <span className="detail-type"><ShieldCheck size={13} color="#22C55E" /> {selected.type}</span>
             <h2>{selected.name}</h2>
+            {selected.nameRu && <p className="detail-lang">{selected.nameHy} • {selected.nameRu}</p>}
             <div className="detail-actions">
               <button className="btn-primary" onClick={() => drawRoute(selected.loc as [number, number])}>
                 <Navigation2 size={18} fill="white" /> Navigate

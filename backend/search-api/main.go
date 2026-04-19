@@ -13,6 +13,7 @@ type Place struct {
 	ID     string    `json:"id"`
 	Name   string    `json:"name"`
 	NameHy string    `json:"nameHy"`
+	NameRu string    `json:"nameRu"`
 	Type   string    `json:"type"`
 	Cat    string    `json:"cat"`
 	Rating string    `json:"rating"`
@@ -21,12 +22,12 @@ type Place struct {
 
 var Database = []Place{
 	// ── Core Hardcoded Landmarks (Highest Priority) ──
-	{ID: "p1", Name: "Republic Square", NameHy: "Hanrapetutyan Hraparak", Type: "Plaza", Cat: "nearby", Rating: "4.9", Loc: []float64{44.5126, 40.1776}},
-	{ID: "p2", Name: "Cascade Complex", NameHy: "Kaskad Hamalir", Type: "Landmark", Cat: "nearby", Rating: "4.8", Loc: []float64{44.5155, 40.1915}},
-	{ID: "p3", Name: "Opera House", NameHy: "Opera", Type: "Theatre", Cat: "nearby", Rating: "4.7", Loc: []float64{44.5145, 40.1860}},
-	{ID: "p4", Name: "Blue Mosque", NameHy: "Kapuyt Mzkit", Type: "Place of Worship", Cat: "nearby", Rating: "4.7", Loc: []float64{44.5056, 40.1782}},
-	{ID: "p5", Name: "Erebuni Fortress", NameHy: "Erebuni Berd", Type: "Historical Site", Cat: "nearby", Rating: "4.5", Loc: []float64{44.5280, 40.1495}},
-	{ID: "m1", Name: "Republic Square Metro", NameHy: "Hanrapetutyan Hraparak (Metro)", Type: "Subway Station", Cat: "transport", Rating: "4.5", Loc: []float64{44.5147, 40.1784}},
+	{ID: "p1", Name: "Republic Square", NameHy: "Հանրապետության հրապարակ", NameRu: "Площадь Республики", Type: "Plaza", Cat: "nearby", Rating: "4.9", Loc: []float64{44.5126, 40.1776}},
+	{ID: "p2", Name: "Cascade Complex", NameHy: "Կասկադ համալիր", NameRu: "Каскад", Type: "Landmark", Cat: "nearby", Rating: "4.8", Loc: []float64{44.5155, 40.1915}},
+	{ID: "p3", Name: "Opera House", NameHy: "Օպերայի թատրոն", NameRu: "Театр Оперы и Балета", Type: "Theatre", Cat: "nearby", Rating: "4.7", Loc: []float64{44.5145, 40.1860}},
+	{ID: "p4", Name: "Blue Mosque", NameHy: "Կապույտ մզկիթ", NameRu: "Голубая мечеть", Type: "Place of Worship", Cat: "nearby", Rating: "4.7", Loc: []float64{44.5056, 40.1782}},
+	{ID: "p5", Name: "Erebuni Fortress", NameHy: "Էրեբունի ամրոց", NameRu: "Крепость Эребуни", Type: "Historical Site", Cat: "nearby", Rating: "4.5", Loc: []float64{44.5280, 40.1495}},
+	{ID: "m1", Name: "Republic Square Metro", NameHy: "Հանրապետության հրապարակ (մետրո)", NameRu: "Площадь Республики (Метро)", Type: "Subway Station", Cat: "transport", Rating: "4.5", Loc: []float64{44.5147, 40.1784}},
 }
 
 func loadOSMData() {

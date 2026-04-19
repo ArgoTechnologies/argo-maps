@@ -16,6 +16,7 @@ struct Place {
     id: String,
     name: String,
     name_hy: String,
+    name_ru: String,
     place_type: String,
     lat: f64,
     lng: f64,
@@ -160,6 +161,8 @@ struct JsonPlace {
     name: String,
     #[serde(rename = "nameHy", default)]
     name_hy: String,
+    #[serde(rename = "nameRu", default)]
+    name_ru: String,
     #[serde(rename = "type", default)]
     place_type: String,
     loc: [f64; 2],
@@ -176,6 +179,7 @@ fn load_yerevan_places() -> Vec<Place> {
                     id: p.id,
                     name: p.name,
                     name_hy: p.name_hy,
+                    name_ru: p.name_ru.clone(),
                     place_type: p.place_type,
                     lat: p.loc[0],
                     lng: p.loc[1],
@@ -188,7 +192,7 @@ fn load_yerevan_places() -> Vec<Place> {
     
     println!("⚠️ Could not read places.json. Using fallback data.");
     vec![
-        Place { id: "s1".into(), name: "Republic Square".into(), name_hy: "Հանրապետության հրապարակ".into(), place_type: "Plaza".into(), lng: 44.5126, lat: 40.1776 },
+        Place { id: "p1".into(), name: "Republic Square".into(), name_hy: "Հանրապետության հրապարակ".into(), name_ru: "Площадь Республики".into(), place_type: "Plaza".into(), lng: 44.5126, lat: 40.1776 },
     ]
 }
 
