@@ -141,16 +141,18 @@ export default function ArgoMap() {
       setResults([]);
       return;
     }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch(`http://localhost:4000/api/search?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        setResults(data || []);
-      } catch (err) {
-        console.error('Go API Error:', err);
-      }
-    }, 250); // Debounce
-    return () => clearTimeout(timer);
+    
+    // We are hitting a blazing fast Go API. We don't need artificial debounce delays!
+    const controller = new AbortController();
+    fetch(`http://127.0.0.1:4000/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => setResults(data || []))
+      .catch(err => {
+        if (err.name !== 'AbortError') console.error('Go API Error:', err);
+      });
+      
+    // Cancel previous request if user types a new character before the last request finishes
+    return () => controller.abort();
   }, [query]);
 
   /* Select place */
@@ -290,10 +292,9 @@ export default function ArgoMap() {
             placeholder="Search Yerevan…"
             value={query}
             onFocus={() => setSearchFocused(true)}
-            onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
             onChange={e => setQuery(e.target.value)}
           />
-          {query && <button className="icon-btn" onClick={() => setQuery('')}><X size={15} /></button>}
+          {query && <button className="icon-btn" onClick={() => { setQuery(''); setSearchFocused(false); }}><X size={15} /></button>}
           <span className="divider-v" />
           <Link href="/developer" className="icon-btn"><Code size={17} /></Link>
         </div>
