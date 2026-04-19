@@ -7,5 +7,6 @@ RUN CGO_ENABLED=0 go build -o /search-api .
 
 FROM alpine:3.20
 COPY --from=builder /search-api /search-api
+COPY --from=builder /app/places.json /places.json
 EXPOSE 4000
 CMD ["/search-api"]
