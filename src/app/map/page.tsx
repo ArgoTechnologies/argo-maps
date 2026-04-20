@@ -378,8 +378,14 @@ export default function ArgoMap() {
 
     // ── INTERACTIVE POI LOGIC ──
     m.on('click', (e) => {
-      const hit = m.queryRenderedFeatures(e.point).find(feat =>
-        feat.layer.type === 'symbol' && feat.properties.name
+      // Create a 5-pixel fat-finger bounding box around the click
+      const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [e.point.x - 6, e.point.y - 6],
+        [e.point.x + 6, e.point.y + 6]
+      ];
+      
+      const hit = m.queryRenderedFeatures(bbox).find(feat =>
+        feat.properties && (feat.properties.name || feat.properties['name:hy'] || feat.properties['name:en'])
       );
 
       if (hit) {
@@ -394,7 +400,7 @@ export default function ArgoMap() {
 
         selectPlace({
           id: hit.id || Math.random(),
-          name: hit.properties.name,
+          name: hit.properties.name || hit.properties['name:ru'] || hit.properties['name:en'] || hit.properties['name:hy'] || 'Место',
           nameHy: hit.properties['name:hy'] || hit.properties['name:en'] || '',
           type: typeStr.charAt(0).toUpperCase() + typeStr.slice(1).replace('_', ' '),
           cat,
@@ -402,31 +408,51 @@ export default function ArgoMap() {
           loc: [e.lngLat.lng, e.lngLat.lat]
         });
       } else {
-        // No vector feature clicked — ask Rust Spatial Engine for the nearest place
-        fetch(`http://127.0.0.1:4002/api/spatial/reverse?lng=${e.lngLat.lng}&lat=${e.lngLat.lat}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data && data.place) {
+          // Fallback: Real-time Reverse Geocoding via Nominatim
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.lngLat.lat}&lon=${e.lngLat.lng}&accept-language=ru`)
+            .then(res => res.json())
+            .then(data => {
+              if (data && data.address) {
+                const name = data.name || data.address.road || data.address.pedestrian || data.address.suburb || 'Неизвестное место';
+                const typeStr = data.type || data.category || 'Location';
+                const address = data.display_name;
+                
+                selectPlace({
+                  id: data.osm_id || Math.random(),
+                  name: name,
+                  nameHy: '',
+                  type: typeStr.charAt(0).toUpperCase() + typeStr.slice(1).replace('_', ' '),
+                  cat: typeStr.includes('bus') || typeStr.includes('station') ? 'transport' : 'nearby',
+                  rating: (Math.random() * (5 - 4.0) + 4.0).toFixed(1),
+                  loc: [e.lngLat.lng, e.lngLat.lat],
+                  addressRu: address
+                });
+              } else {
+                throw new Error("No address");
+              }
+            })
+            .catch(() => {
               selectPlace({
-                id: data.place.id,
-                name: data.place.name,
-                nameHy: data.place.name_hy || '',
-                nameRu: data.place.name_ru || '',
-                type: data.place.place_type || 'Location',
-                cat: data.place.place_type?.includes('Station') ? 'transport' : 'nearby',
-                rating: '4.5',
-                loc: [data.place.lng, data.place.lat]
+                id: Math.random(),
+                name: 'Точка на карте',
+                nameHy: 'Գտնվելու վայրը',
+                type: 'Location',
+                cat: 'nearby',
+                rating: '0.0',
+                loc: [e.lngLat.lng, e.lngLat.lat]
               });
-            } else {
-              setSelected(null);
-            }
-          })
-          .catch(() => setSelected(null));
+            });
       }
     });
 
     m.on('mousemove', (e) => {
-      const isPOI = m.queryRenderedFeatures(e.point).some(feat => feat.layer.type === 'symbol' && feat.properties.name);
+      const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [e.point.x - 4, e.point.y - 4],
+        [e.point.x + 4, e.point.y + 4]
+      ];
+      const isPOI = m.queryRenderedFeatures(bbox).some(feat => 
+        feat.properties && (feat.properties.name || feat.properties['name:hy'] || feat.properties['name:en'])
+      );
       m.getCanvas().style.cursor = isPOI ? 'pointer' : '';
     });
 

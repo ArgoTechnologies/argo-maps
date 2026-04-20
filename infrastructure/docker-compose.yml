@@ -44,15 +44,19 @@ services:
       interval: 10s
       timeout: 3s
 
-  # ─── Martin: serves PMTiles directly (no PostGIS needed) ───
+  # ─── Martin: serves PMTiles and PostGIS ───
   martin:
     image: ghcr.io/maplibre/martin:latest
     container_name: argo-martin
+    environment:
+      - DATABASE_URL=postgresql://argo:argomaps@postgis:5432/osm
     ports:
       - "3100:3000"
     volumes:
       - ./tiles:/tiles
-    command: ["/tiles"]
+    command: ["--dir", "/tiles"]
+    depends_on:
+      - postgis
     restart: unless-stopped
 
   # ─── Nginx: Reverse proxy with CORS & caching ───
@@ -71,3 +75,30 @@ services:
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
     restart: unless-stopped
+
+  # ─── PostGIS: Vector Map Database ───
+  postgis:
+    image: postgis/postgis:15-3.3
+    container_name: argo-postgis
+    environment:
+      - POSTGRES_USER=argo
+      - POSTGRES_PASSWORD=argomaps
+      - POSTGRES_DB=osm
+    ports:
+      - "5435:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # ─── Go: Transit Socket API ───
+  transit-socket:
+    build:
+      context: ../backend/transit-socket
+      dockerfile: Dockerfile
+    container_name: argo-transit
+    ports:
+      - "4001:4001"
+    restart: unless-stopped
+
+volumes:
+  pg_data:

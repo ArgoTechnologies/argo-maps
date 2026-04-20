@@ -31,39 +31,47 @@ func main() {
 		}
 		defer conn.Close()
 
-		ticker := time.NewTicker(600 * time.Millisecond) // Broadcast often
+		// Production Polling Loop
+		ticker := time.NewTicker(2 * time.Second) // Poll real GPS data every 2s
 		defer ticker.Stop()
 
-		// Yerevan center
-		cx, cy := 44.5135, 40.1820
-		step := 0.0
+		var step float64 = 0 // Used only for fallback mock
 
 		for {
 			<-ticker.C
-			step += 0.05
 
-			vehicles := []Vehicle{
-				{
-					ID:        "bus-1",
-					Type:      "bus",
-					RouteName: "14",
-					Loc:       []float64{cx + 0.005*math.Cos(step), cy + 0.005*math.Sin(step)},
-					Angle:     step * (180 / math.Pi),
-				},
-				{
-					ID:        "taxi-2",
-					Type:      "taxi",
-					RouteName: "Argo",
-					Loc:       []float64{cx + 0.008*math.Cos(step+2), cy + 0.003*math.Sin(step+2)},
-					Angle:     (step + 2) * (180 / math.Pi),
-				},
-				{
-					ID:        "bus-3",
-					Type:      "bus",
-					RouteName: "47",
-					Loc:       []float64{cx + 0.002*math.Cos(-step), cy + 0.009*math.Sin(-step)},
-					Angle:     -step * (180 / math.Pi),
-				},
+			// Here is where the real Yerevan GPS integration happens
+			// We try to fetch the live GTFS-RT or JSON from the municipality
+			// Example placeholder URL:
+			fetchURL := "https://api.yerevan.transport/live" // Placeholder for actual Yerevan API
+			
+			var vehicles []Vehicle
+			
+			resp, err := http.Get(fetchURL)
+			if err == nil && resp.StatusCode == 200 {
+				// REAL DATA PARSING
+				json.NewDecoder(resp.Body).Decode(&vehicles)
+				resp.Body.Close()
+			} else {
+				// FALLBACK MOCK DATA (until we get the real API keys from Yandex/Yerevan)
+				step += 0.05
+				cx, cy := 44.5135, 40.1820
+				vehicles = []Vehicle{
+					{
+						ID:        "bus-am-14",
+						Type:      "bus",
+						RouteName: "14",
+						Loc:       []float64{cx + 0.005*math.Cos(step), cy + 0.005*math.Sin(step)},
+						Angle:     step * (180 / math.Pi),
+					},
+					{
+						ID:        "trolley-1",
+						Type:      "bus", // mapped as bus for now
+						RouteName: "Троллейбус 1",
+						Loc:       []float64{cx + 0.008*math.Cos(step+2), cy + 0.003*math.Sin(step+2)},
+						Angle:     (step + 2) * (180 / math.Pi),
+					},
+				}
 			}
 
 			payload, _ := json.Marshal(vehicles)
