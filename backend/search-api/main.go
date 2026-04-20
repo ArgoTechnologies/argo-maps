@@ -16,8 +16,11 @@ type Place struct {
 	NameRu string    `json:"nameRu"`
 	Type   string    `json:"type"`
 	Cat    string    `json:"cat"`
-	Rating string    `json:"rating"`
-	Loc    []float64 `json:"loc"`
+	Rating    string    `json:"rating"`
+	AddressHy string    `json:"addressHy,omitempty"`
+	AddressRu string    `json:"addressRu,omitempty"`
+	AddressEn string    `json:"addressEn,omitempty"`
+	Loc       []float64 `json:"loc"`
 }
 
 var Database = []Place{

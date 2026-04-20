@@ -69,6 +69,11 @@ const req = https.request(options, (res) => {
         
         let rating = (4.0 + Math.random() * 0.9).toFixed(1);
         
+        const house = el.tags['addr:housenumber'] || '';
+        const streetHy = el.tags['addr:street:hy'] || el.tags['addr:street'] || '';
+        const streetRu = el.tags['addr:street:ru'] || el.tags['addr:street'] || '';
+        const streetEn = el.tags['addr:street:en'] || el.tags['addr:street'] || '';
+        
         places.push({
           id: id,
           name: name,
@@ -77,6 +82,9 @@ const req = https.request(options, (res) => {
           type: type,
           cat: cat,
           rating: rating,
+          addressHy: streetHy ? `${streetHy} ${house}`.trim() : '',
+          addressRu: streetRu ? `${streetRu} ${house}`.trim() : '',
+          addressEn: streetEn ? `${streetEn} ${house}`.trim() : '',
           loc: [lon, lat]
         });
       });
