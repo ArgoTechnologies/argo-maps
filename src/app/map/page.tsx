@@ -145,6 +145,12 @@ export default function ArgoMap() {
   const [globalLang, setGlobalLang] = useState<'hy' | 'ru' | 'en'>('hy');
   const markerRef = useRef<maplibregl.Marker | null>(null);
 
+  // ── Follow Me state ──
+  const [locationMode, setLocationMode] = useState<'off' | 'locate' | 'follow'>('off');
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const compassListenerRef = useRef<((e: DeviceOrientationEvent) => void) | null>(null);
+
   useEffect(() => {
     const saved = localStorage.getItem('argo-lang');
     if (saved && ['hy', 'ru', 'en'].includes(saved)) {
@@ -214,6 +220,93 @@ export default function ArgoMap() {
     }, 300);
   }, []);
 
+  /* ── Follow Me: cleanup helper ── */
+  const stopFollowMe = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (compassListenerRef.current) {
+      window.removeEventListener('deviceorientation', compassListenerRef.current);
+      compassListenerRef.current = null;
+    }
+    userMarkerRef.current?.remove();
+    userMarkerRef.current = null;
+    setLocationMode('off');
+  }, []);
+
+  /* ── Follow Me: 3-state handler ── */
+  const handleLocate = useCallback(() => {
+    const m = mapRef.current;
+    if (!m) return;
+
+    // Mode: off → locate
+    if (locationMode === 'off') {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { longitude: lng, latitude: lat } = pos.coords;
+
+        // Create user dot marker
+        if (userMarkerRef.current) userMarkerRef.current.remove();
+        const el = document.createElement('div');
+        el.className = 'user-location-marker';
+        el.innerHTML = `
+          <div class="user-dot"></div>
+          <div class="user-ring"></div>
+        `;
+        userMarkerRef.current = new maplibregl.Marker({ element: el })
+          .setLngLat([lng, lat])
+          .addTo(m);
+
+        m.flyTo({ center: [lng, lat], zoom: 17, pitch: 50, duration: 1400 });
+        setLocationMode('locate');
+      }, () => {
+        m.flyTo({ center: [44.5135, 40.1820], zoom: 14.5, pitch: 45, duration: 1000 });
+      });
+      return;
+    }
+
+    // Mode: locate → follow (compass mode)
+    if (locationMode === 'locate') {
+      if (!navigator.geolocation) return;
+
+      // Watch GPS for live position
+      watchIdRef.current = navigator.geolocation.watchPosition(pos => {
+        const { longitude: lng, latitude: lat } = pos.coords;
+        userMarkerRef.current?.setLngLat([lng, lat]);
+        m.setCenter([lng, lat]);
+      }, undefined, { enableHighAccuracy: true, maximumAge: 1000 });
+
+      // Compass: listen to device orientation
+      const compassHandler = (e: DeviceOrientationEvent) => {
+        // webkitCompassHeading is iOS, alpha is Android (need to invert)
+        const heading = (e as any).webkitCompassHeading ?? (e.alpha ? 360 - e.alpha : null);
+        if (heading !== null) {
+          m.easeTo({ bearing: heading, duration: 200, easing: (t) => t });
+        }
+      };
+      compassListenerRef.current = compassHandler;
+
+      // iOS 13+ needs permission
+      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        (DeviceOrientationEvent as any).requestPermission().then((res: string) => {
+          if (res === 'granted') {
+            window.addEventListener('deviceorientation', compassHandler);
+            setLocationMode('follow');
+          }
+        });
+      } else {
+        window.addEventListener('deviceorientation', compassHandler);
+        setLocationMode('follow');
+      }
+      return;
+    }
+
+    // Mode: follow → off
+    stopFollowMe();
+    m.easeTo({ bearing: 0, pitch: 45, duration: 600 });
+  }, [locationMode, stopFollowMe]);
+
   /* ── Routing ── */
   const clearRoute = useCallback(() => {
     const m = mapRef.current;
@@ -269,7 +362,7 @@ export default function ArgoMap() {
 
     const m = new maplibregl.Map({
       container: containerRef.current,
-      style: 'https://tiles.openfreemap.org/styles/liberty',
+      style: '/style.json',
       center: [44.5135, 40.1820],
       zoom: 14.5,
       pitch: 45,
@@ -434,15 +527,14 @@ export default function ArgoMap() {
 
       {/* ─── Controls ─── */}
       <div className="controls-stack">
-        <button className="ctrl-btn" onClick={() => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(pos => {
-              mapRef.current?.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16, pitch: 45 });
-            }, () => {
-              mapRef.current?.flyTo({ center: [44.5135, 40.1820], zoom: 14.5, pitch: 45 });
-            });
-          }
-        }}><LocateFixed size={19} /></button>
+        <button
+          className={`ctrl-btn locate-btn locate-${locationMode}`}
+          onClick={handleLocate}
+          title={locationMode === 'off' ? 'Найти меня' : locationMode === 'locate' ? 'Следить за мной' : 'Выключить слежение'}
+        >
+          {locationMode === 'follow' ? <Compass size={19} /> : <LocateFixed size={19} />}
+          {locationMode === 'follow' && <div className="compass-ring" />}
+        </button>
         <button className="ctrl-btn" onClick={() => mapRef.current?.setBearing(0)}><Compass size={19} /></button>
       </div>
 

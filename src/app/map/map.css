@@ -108,6 +108,21 @@
         .marker-core{position:absolute;width:14px;height:14px;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);border:2.5px solid #1A1D24;box-shadow:0 4px 10px rgba(0,0,0,.6);z-index:2}
         .marker-pulse{position:absolute;width:14px;height:14px;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);animation:marker-pulse 2s infinite ease-out;z-index:1}
 
+        /* ── User Location Marker ── */
+        .user-location-marker{width:24px;height:24px;pointer-events:none;transform:translate(-50%,-50%)}
+        .user-dot{position:absolute;width:16px;height:16px;background:#3B82F6;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);border:3px solid #fff;box-shadow:0 0 0 2px rgba(59,130,246,.4),0 4px 12px rgba(0,0,0,.5);z-index:2}
+        .user-ring{position:absolute;width:16px;height:16px;background:rgba(59,130,246,.35);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);animation:user-ring-pulse 2.2s infinite ease-out;z-index:1}
+        @keyframes user-ring-pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:.6}100%{transform:translate(-50%,-50%) scale(3.5);opacity:0}}
+
+        /* ── Locate button states ── */
+        .locate-btn{position:relative;overflow:visible !important}
+        .locate-locate{color:#3B82F6 !important}
+        .locate-locate svg{stroke:#3B82F6}
+        .locate-follow{color:#F59E0B !important;background:rgba(245,158,11,.12) !important}
+        .locate-follow svg{stroke:#F59E0B}
+        .compass-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid transparent;border-top-color:#F59E0B;border-right-color:#F59E0B;animation:spin-compass .8s linear infinite;pointer-events:none}
+        @keyframes spin-compass{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
         /* ══════════════════════════════════════
            MOBILE RESPONSIVE (< 768px)
            Bottom Sheet Pattern like Yandex Go

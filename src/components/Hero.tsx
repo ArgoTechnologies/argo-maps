@@ -55,7 +55,7 @@ export default function Hero() {
           <Link href="/docs" className="btn-primary" style={{ padding: '1rem 2rem', fontSize: '1rem' }}>
             Get Started <ArrowRight size={18} />
           </Link>
-          <Link href="#" className="btn-secondary" style={{ padding: '1rem 2rem', fontSize: '1rem' }}>
+          <Link href="/map" className="btn-secondary" style={{ padding: '1rem 2rem', fontSize: '1rem' }}>
             View Demo
           </Link>
         </div>
