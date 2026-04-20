@@ -147,13 +147,7 @@ export default function ArgoMap() {
     const controller = new AbortController();
     fetch(`http://127.0.0.1:4000/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
       .then(res => res.json())
-      .then(data => {
-        if (!data) { setResults([]); return; }
-        // The Go API currently serves [Lat, Lng]. MapLibre expects [Lng, Lat].
-        // Swap them immediately so the entire frontend runs on standard GeoJSON coords.
-        const normalized = data.map((p: any) => ({ ...p, loc: [p.loc[1], p.loc[0]] }));
-        setResults(normalized);
-      })
+      .then(data => setResults(data || []))
       .catch(err => {
         if (err.name !== 'AbortError') console.error('Go API Error:', err);
       });

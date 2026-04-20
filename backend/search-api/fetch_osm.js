@@ -77,7 +77,7 @@ const req = https.request(options, (res) => {
           type: type,
           cat: cat,
           rating: rating,
-          loc: [lat, lon]
+          loc: [lon, lat]
         });
       });
       
