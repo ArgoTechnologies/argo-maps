@@ -4,16 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "opennextjs-cloudflare build",
     "start": "next start",
     "lint": "eslint",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
+    "deploy": "opennextjs-cloudflare deploy",
+    "preview": "opennextjs-cloudflare preview"
   },
   "dependencies": {
     "lucide-react": "^1.8.0",
     "maplibre-gl": "^5.23.0",
-    "next": "15.1.0",
+    "next": "15.1.15",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
@@ -23,7 +23,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.1.0",
+    "eslint-config-next": "15.1.15",
     "typescript": "^5",
     "wrangler": "^4.84.0"
   }
