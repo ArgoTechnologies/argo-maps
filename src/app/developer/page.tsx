@@ -396,9 +396,9 @@ export default function DeveloperPortal() {
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [showNewKey, setShowNewKey] = useState(false);
   const [services, setServices] = useState<ServiceStatus[]>([
-    { name: 'Search API', url: 'http://127.0.0.1:4000/api/search?q=test', lang: 'Go', port: 4000, status: 'checking', latency: 0 },
-    { name: 'Spatial Engine', url: 'http://127.0.0.1:4002/health', lang: 'Rust', port: 4002, status: 'checking', latency: 0 },
-    { name: 'Tile Server', url: 'http://127.0.0.1:3100/catalog', lang: 'Rust (Martin)', port: 3100, status: 'checking', latency: 0 },
+    { name: 'Search API', url: 'https://argo-maps.pages.dev/api/health', lang: 'Go', port: 443, status: 'checking', latency: 0 },
+    { name: 'Spatial Engine', url: 'https://argo-maps.pages.dev/api/spatial/health', lang: 'Rust', port: 443, status: 'checking', latency: 0 },
+    { name: 'Tile Server', url: 'https://tiles.openfreemap.org/planet', lang: 'Rust (Martin)', port: 443, status: 'checking', latency: 0 },
   ]);
 
   // Load language from localStorage (synced with Navbar)
@@ -485,7 +485,7 @@ export default function DeveloperPortal() {
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
           <div style={{ background: 'linear-gradient(135deg,#00f2ff,#8147ff)', width: '30px', height: '30px', borderRadius: '8px', flexShrink: 0 }} />
           <span style={{ fontWeight: 900, fontSize: '1.1rem', color: '#fff', letterSpacing: '-0.02em' }}>
-            Argo <span style={{ color: '#00F2FF' }}>Dev</span>
+            Argo <span style={{ color: '#00F2FF' }}>Technologies</span>
           </span>
         </Link>
 

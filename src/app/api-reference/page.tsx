@@ -118,7 +118,7 @@ const getEndpoints = (t: any) => [
           { name: 'q', type: 'string', required: true, desc: 'Search query' },
           { name: 'limit', type: 'number', required: false, desc: 'Max limit (1-50)' },
         ],
-        example: `curl "https://maps.argo.am/api/search?q=Abovyan&lang=en" \\\n  -H "Authorization: Bearer YOUR_KEY"`,
+        example: `curl "https://argo-maps.pages.dev/api/search?q=Abovyan&lang=en" \\\n  -H "Authorization: Bearer YOUR_KEY"`,
         response: `{\n  "results": [\n    {\n      "id": "1234",\n      "name": "Abovyan Street",\n      "lat": 40.1792,\n      "lng": 44.5136\n    }\n  ],\n  "total": 1\n}`,
       },
     ],
@@ -136,7 +136,7 @@ const getEndpoints = (t: any) => [
         params: [
           { name: 'q', type: 'string', required: true, desc: 'Address to geocode' },
         ],
-        example: `curl "https://maps.argo.am/api/geocode?q=Yerevan" \\\n  -H "Authorization: Bearer YOUR_KEY"`,
+        example: `curl "https://argo-maps.pages.dev/api/geocode?q=Yerevan" \\\n  -H "Authorization: Bearer YOUR_KEY"`,
         response: `{\n  "lat": 40.181,\n  "lng": 44.514,\n  "confidence": 0.95\n}`,
       },
       {
@@ -148,7 +148,7 @@ const getEndpoints = (t: any) => [
           { name: 'lat', type: 'number', required: true, desc: 'Latitude' },
           { name: 'lng', type: 'number', required: true, desc: 'Longitude' },
         ],
-        example: `curl "https://maps.argo.am/api/reverse?lat=40.18&lng=44.51" \\\n  -H "Authorization: Bearer YOUR_KEY"`,
+        example: `curl "https://argo-maps.pages.dev/api/reverse?lat=40.18&lng=44.51" \\\n  -H "Authorization: Bearer YOUR_KEY"`,
         response: `{\n  "place": {\n    "name": "Republic Square",\n    "distance_m": 12\n  }\n}`,
       },
     ],
@@ -168,7 +168,7 @@ const getEndpoints = (t: any) => [
           { name: 'x', type: 'number', required: true, desc: 'X coordinate' },
           { name: 'y', type: 'number', required: true, desc: 'Y coordinate' },
         ],
-        example: `// Use directly in MapLibre\nconst url = 'https://maps.argo.am/tiles/armenia';`,
+        example: `// Use directly in MapLibre\nconst url = 'https://argo-maps.pages.dev/tiles/armenia';`,
         response: `// Binary MVT tile data\n// Content-Type: application/x-protobuf`,
       },
     ],
@@ -251,9 +251,9 @@ export default function ApiReference() {
         <div className="container" style={{ maxWidth: '1100px', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.base_url}</span>
           <code style={{ background: 'var(--bg-secondary)', padding: '6px 14px', borderRadius: '8px', fontSize: '0.9rem', color: 'var(--accent-cyan)', border: '1px solid var(--border-color)', flex: 1, userSelect: 'all' }}>
-            https://maps.argo.am
+            https://argo-maps.pages.dev
           </code>
-          <button onClick={() => copy('https://maps.argo.am', 'base')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+          <button onClick={() => copy('https://argo-maps.pages.dev', 'base')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
             {copied === 'base' ? <Check size={14} color="#22C55E" /> : <Copy size={14} />}
           </button>
         </div>
