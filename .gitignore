@@ -38,23 +38,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
-src/components/Navbar.tsx
-AGENTS.md
-CLAUDE.md
-eslint.config.mjs
-next.config.ts
-package-lock.json
-package.json
-tsconfig.json
-public/file.svg
-.gitignore
-public/globe.svg
-public/hero.png
-public/next.svg
-public/vercel.svg
-public/window.svg
-src/app/favicon.ico
 
 # Rust
 /target/
