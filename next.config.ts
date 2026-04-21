@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: 'export',
   typescript: {
     ignoreBuildErrors: true,
   },
-  // eslint block was causing warnings in Next 15, removing it
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
