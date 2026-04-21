@@ -395,6 +395,24 @@ export default function DeveloperPortal() {
   // Start with an empty keys list — user creates their own
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [showNewKey, setShowNewKey] = useState(false);
+
+  // Load keys from localStorage on mount
+  useEffect(() => {
+    const savedKeys = localStorage.getItem('argo-api-keys');
+    if (savedKeys) {
+      try {
+        setKeys(JSON.parse(savedKeys));
+      } catch (e) {
+        console.error("Failed to parse keys", e);
+      }
+    }
+  }, []);
+
+  // Save keys to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('argo-api-keys', JSON.stringify(keys));
+  }, [keys]);
+
   const [services, setServices] = useState<ServiceStatus[]>([
     { name: 'Search API', url: 'https://argo-maps.pages.dev/api/health', lang: 'Go', port: 443, status: 'checking', latency: 0 },
     { name: 'Spatial Engine', url: 'https://argo-maps.pages.dev/api/spatial/health', lang: 'Rust', port: 443, status: 'checking', latency: 0 },
